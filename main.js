@@ -13,10 +13,19 @@ require.config({
     }
 });
 
-require(['d3','underscore','ExclusionFactBase','BTree','Hexagon'],function(d3,_,ExclusionFactBase,BTree,Hexagon){
+require(['d3','underscore','ExclusionFactBase','BTree','Hexagon','BehaviourDefinitions'],function(d3,_,ExclusionFactBase,BTree,Hexagon,BModule){
     console.log('initial');
     let height = 800,
-        width = 800;
+        width = 800,
+        movements = {
+            "q" : "upLeft",
+            "e" : "upRight",
+            "a" : "left",
+            "d" : "right",
+            "z" : "downLeft",
+            "c" : "downRight"
+        };
+
     
     //Create a Canvas helper function:
     function drawCanvas(name,before){
@@ -34,50 +43,42 @@ require(['d3','underscore','ExclusionFactBase','BTree','Hexagon'],function(d3,_,
     let canvas = drawCanvas("Hexagon AI Test"),
     //Then create the hexagon board:
         hexBoard = new Hexagon(canvas,height,width);
-    hexBoard.draw();
 
     //Create the characters, place them on the board:
-    let baseBTree = new BTree(),
-        bob = baseBTree.newCharacter({
-            name : "bob",
-            q : 0,
-            r : 0,
-            baseTile : { colour : "black" }
-        }),
-        bill = baseBTree.newCharacter({
-            name : "bill",
-            q : 0,
-            r : 1,
-            baseTile : { colour : "black" }
-        });
-
-    //run the behaviours
-
+    let baseBTree = new BTree(undefined,BModule),
+        agents = [];
+    agents.push(baseBTree.newCharacter({
+        name : "bob",
+        colour : "red",
+        q : 0,
+        r : 0,
+        baseTile : { colour : "black" },
+        board : hexBoard,
+        movements : movements
+    }));
+    agents.push(baseBTree.newCharacter({
+        name : "bill",
+        colour : "blue",
+        q : 1,
+        r : 1,
+        baseTile : { colour : "black" },
+        board : hexBoard,
+        movements : movements
+    }));
+    //Register the agents into the board:
+    hexBoard.register(agents);
     
+    //run the behaviours
+    hexBoard.draw();
     
     //Register key presses
-    // d3.select('body').on('keyup',function(){
-    //     var event = d3.event,
-    //         movements = {
-    //             "q" : "upLeft",
-    //             "e" : "upRight",
-    //             "a" : "left",
-    //             "d" : "right",
-    //             "z" : "downLeft",
-    //             "c" : "downRight"
-    //         };
-    
-    //     //if valid movement, move
-    //     if(movements[d3.event.key] !== undefined){
-    //     var newIndex = move(curIndex,movements[d3.event.key]);
-    //         if(newIndex >= 0 && newIndex < positions.length){
-    //             curIndex = newIndex;
-    //         }
-    //     }
-    // });
-    //-----
-    //console.log("Positions:",positions);
-    //console.log(curIndex);
+    d3.select('body').on('keyup',function(){
+        agents.forEach(function(d){
+            d.update();
+        });
+        hexBoard.draw();
+    });
 
-    
+    //-----
+    console.log(hexBoard);
 });

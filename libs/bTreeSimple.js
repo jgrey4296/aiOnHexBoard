@@ -420,15 +420,15 @@ define(['underscore','ExclusionFactBase'],function(_,ExFB){
             delete this.parent.children[this.id];
         }
         //if persistent, and the persistent condition [is]/isnt(?) met, re-add:
-        if(this.currentAbstract.persistent && this.bTreeRef.testConditions(this.currentAbstract.persistConditions)){
-            try{
+        try{
+            if(this.currentAbstract.persistent && this.bTreeRef.testConditions(this.currentAbstract.persistConditions)){
                 this.parent.addChild(this.currentAbstract.name);
-            }catch(error){
-                //although cleanup is called from the parent's inform method,
-                //cycles are protected against by only cleaning up if the
-                //node is stored as a child, which by this point the node isnt.
-                this.informParent(FAIL);
             }
+        }catch(error){
+            //although cleanup is called from the parent's inform method,
+            //cycles are protected against by only cleaning up if the
+            //node is stored as a child, which by this point the node isnt.
+            this.informParent(FAIL);
         }
         //remove the parent reference
         this.parent = null;
@@ -569,6 +569,7 @@ define(['underscore','ExclusionFactBase'],function(_,ExFB){
        The Tree Controller
     */
     var BTree = function(sharedFactBase,sharedAbstractLibrary,templateValues){
+        this.id = gid++;
         //name -> [abstracts]
         this.behaviourLibrary = {};
         this.loadBehaviours(sharedAbstractLibrary);

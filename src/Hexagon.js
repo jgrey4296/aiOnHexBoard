@@ -1,3 +1,4 @@
+/* jshint esversion : 6 */
 define(['underscore','d3','util'],function(_,d3,util){
 
     //odd r offset
@@ -10,7 +11,7 @@ define(['underscore','d3','util'],function(_,d3,util){
         this.columns = columns || 20; //q
         this.rows = rows || 15; //r
         this.positions = Array(this.columns*this.rows).fill(0).map(function(d){
-            return {colour : "black"};
+            return {colour : "black", agents : {}};
         });
         this.count = 0,
         //Current position:
@@ -18,8 +19,18 @@ define(['underscore','d3','util'],function(_,d3,util){
         //Offset the entire board
         this.ctx = ctx;
         ctx.translate(50,50);
+
+        this.agents = {};
     };
 
+    Hexagon.prototype.register = function(agents){
+        agents.forEach(function(d){
+            let index = this.offsetToIndex(d.values);
+            this.positions[index].agents[d.id] = d;
+            this.agents[d.id] = d;
+        },this);
+    };
+    
     /**
        Draw the actual board
      */
@@ -28,8 +39,9 @@ define(['underscore','d3','util'],function(_,d3,util){
         this.ctx.clearRect(0,0,this.width,this.height);
         //draw each hexagon
         this.positions.forEach(function(d,i){
-            let screenPos = this.indexToScreen(i,this.radius);
-            util.drawPolygon(this.ctx,[screenPos.x,screenPos.y],this.radius,6,false,d.colour);
+            let screenPos = this.indexToScreen(i,this.radius),
+                colour = _.keys(d.agents).length > 0 ? _.first(_.values(d.agents)).values.colour : d.colour;
+            util.drawPolygon(this.ctx,[screenPos.x,screenPos.y],this.radius,6,false,colour);
         },this);
     };
 
@@ -66,7 +78,7 @@ define(['underscore','d3','util'],function(_,d3,util){
         return {
             q : Math.floor(i%this.columns),
             r : Math.floor(i/this.columns)
-        }
+        };
     };
     
     //offset -> cube
@@ -124,17 +136,26 @@ define(['underscore','d3','util'],function(_,d3,util){
         return n_indices_filtered;
     };
 
-    //Movement:
-    Hexagon.prototype.move = function(currentIndex,direction){
+    /**
+       Move the specified agent (by id), from its current position,
+       to a new position
+     */    
+    Hexagon.prototype.move = function(agentId,direction){
+        let agent = this.agents[agentId];
+        if(agent === undefined){
+            throw new Error("Unrecognised agent");
+        }
         let moveDeltas = {
             upLeft:   { x : 0,  y : 1,  z : -1 },
             upRight:  { x : 1,  y : 0,  z : -1 },
-            left:     { x : -1, y : 1,  z : 0  },
-            right:    { x : 1,  y : -1, z: 0   },
-            downLeft: { x : -1, y : 0,  z : 1  },
-            downRight:{ x : 0,  y : -1, z : 1  }
+            left:     { x : -1, y : 1,  z :  0 },
+            right:    { x : 1,  y : -1, z:   0 },
+            downLeft: { x : -1, y : 0,  z :  1 },
+            downRight:{ x : 0,  y : -1, z :  1 }
         },
-            cube = this.offsetToCube(this.indexToOffset(currentIndex));
+            agentOffset = agent.values,
+            oldIndex = this.offsetToIndex(agentOffset),
+            cube = this.offsetToCube(agentOffset);
 
         if(moveDeltas[direction] === undefined){
             throw new Error("Unrecognised direction:",direction);
@@ -143,7 +164,20 @@ define(['underscore','d3','util'],function(_,d3,util){
         cube.x += delta.x;
         cube.y += delta.y;
         cube.z += delta.z;
-        return this.offsetToIndex(this.cubeToOffset(cube));
+
+        //update the agent's offset:
+        let newOffset = this.cubeToOffset(cube),
+            newIndex = this.offsetToIndex(newOffset);
+        if(this.positions[newIndex] === undefined){
+            return;
+        }
+        agent.values.q = newOffset.q;
+        agent.values.r = newOffset.r;
+
+        //remove from the old position
+        delete this.positions[oldIndex].agents[agentId];
+        //add to the new position:
+        this.positions[newIndex].agents[agentId] = agent;
     };
 
     
