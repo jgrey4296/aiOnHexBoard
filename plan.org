@@ -1,0 +1,8 @@
+* Hexagon AI Test
+A Simple program of a hexagon board, with a number of behaviour tree based agents 
+interacting on the board. 
+** TODO Creation of board
+*** TODO Setup the board as an object
+** TODO Creation of Agents
+** TODO Agents registered on Board
+** TODO Agents manipulating board
