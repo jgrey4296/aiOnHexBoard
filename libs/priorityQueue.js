@@ -100,10 +100,13 @@ define(['underscore'],function(_){
         if(this.empty()){
             throw new Error('empty priority queue');
         }
-        let returnVal = this.heap[1];
-        if(this.empty()) { return returnVal.data; }
+        let returnVal = this.heap[1],
+            newTop = this.heap.pop();
+        if(this.empty()){
+            return returnVal.data;
+        }        
         //take the last element as the new head:
-        this.heap[1] = this.heap.pop();
+        this.heap[1] = newTop;
         this.bubbleDown();
         return returnVal.data;
     };
