@@ -5,7 +5,8 @@ require.config({
         d3 : "/libs/d3.min",
         underscore:"/libs/underscore-min",
         ExclusionFactBase: '/libs/ExclusionFactBase',
-        BTree : '/libs/bTreeSimple'
+        BTree : '/libs/bTreeSimple',
+        PriorityQueue : '/libs/priorityQueue'
     },
     shim:{
         underscore:{

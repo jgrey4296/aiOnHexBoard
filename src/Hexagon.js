@@ -2,7 +2,7 @@
 /**
    Hexagon and pathfinding implemented from http://www.redblobgames.com/
  */
-define(['underscore','d3','util'],function(_,d3,util){
+define(['underscore','d3','util','priorityQueue'],function(_,d3,util,PriorityQueue){
 
     
     //odd r offset
@@ -57,6 +57,14 @@ define(['underscore','d3','util'],function(_,d3,util){
         },this);
     };
 
+    Hexagon.prototype.colour = function(index,colour){
+        if(this.positions[index] === undefined){
+            throw new Error('invalid position');
+        }
+        let position = this.positions[index];
+        position.colour = colour;
+    };
+    
 
     Hexagon.prototype.block = function(index){
         if(this.positions[index] === undefined){
@@ -281,6 +289,7 @@ define(['underscore','d3','util'],function(_,d3,util){
             reduceFunc = function(m,v){
                 if(m[v] === undefined){
                     frontier.push(v);
+                    hRef.colour(v,"grey");
                     m[v] = current;
                 }
                 return m;
@@ -302,7 +311,7 @@ define(['underscore','d3','util'],function(_,d3,util){
             let neighbourIndices = this.neighbours(current).filter(filterFunc);
             cameFrom = neighbourIndices.reduce(reduceFunc,cameFrom);
         }        
-
+        
         //walk back:
         current = b;
         while(current !== null){
