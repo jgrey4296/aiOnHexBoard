@@ -38,7 +38,6 @@ define(['underscore','d3'],function(_,d3){
     };
 
     //calculate the ith vertex position of a polygon
-
     util.calcPoint = function(centre,radius,i,polygon,flatTopped){
         let rotate = (2*Math.PI)/polygon,
             rotateAmt = flatTopped ? i*rotate+(rotate*0.5) : i*rotate,
