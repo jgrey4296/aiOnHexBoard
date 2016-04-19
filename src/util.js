@@ -1,11 +1,12 @@
+/* jshint esversion : 6 */
 define(['underscore','d3'],function(_,d3){
-
+    "use strict";
     var util = {};
 
     /**
        draw an arbitrary sided polygon, 
        potentially rotated to have a point or a flat top
-     */
+    */
     util.drawPolygon = function(ctx,centre,radius,polygonNumber,flatTopped,fillColour){
         if(fillColour !== undefined){
             //console.log("Drawing colour:",fillColour);
@@ -27,7 +28,7 @@ define(['underscore','d3'],function(_,d3){
                 p2 = util.calcPoint(centre,radius,i+1,polygonNumber,flatTopped);
             ctx.moveTo(Math.floor(p1[0]),Math.floor(p1[1]));
             ctx.lineTo(Math.floor(p2[0]),Math.floor(p2[1]));
-            });
+        });
         ctx.stroke();
 
         ctx.fillStyle = "black";
@@ -35,11 +36,12 @@ define(['underscore','d3'],function(_,d3){
     };
 
     //calculate the ith vertex position of a polygon
+
     util.calcPoint = function(centre,radius,i,polygon,flatTopped){
-        var rotate = (2*Math.PI)/polygon,
-            rotateAmt = flatTopped ? i*rotate+(rotate*0.5) : i*rotate;
+        let rotate = (2*Math.PI)/polygon,
+            rotateAmt = flatTopped ? i*rotate+(rotate*0.5) : i*rotate,
             pointX = centre[0] + (Math.sin(rotateAmt) * radius),
-        pointY = centre[1] + (Math.cos(rotateAmt) * radius);
+            pointY = centre[1] + (Math.cos(rotateAmt) * radius);
         return [pointX,pointY];
     };
 
@@ -48,7 +50,25 @@ define(['underscore','d3'],function(_,d3){
         ctx.arc(xpos,ypos,radius,0,2*Math.PI);
         ctx.stroke();
     };
-    
+
+    //from http://stackoverflow.com/questions/55677/how-do-i-get-the-coordinates-of-a-mouse-click-on-a-canvas-element
+    util.screenToElementPosition = function(event,element){
+        let totalOffsetX = 0,
+            totalOffsetY = 0,
+            canvasX = 0,
+            canvasY = 0;
+        do{
+            totalOffsetX += element.offsetLeft - element.scrollLeft;
+            totalOffsetY += element.offsetTop - element.scrollTop;
+        }while(element = element.offsetParent);
+
+        canvasX = event.clientX - totalOffsetX;
+        canvasY = event.clientY - totalOffsetY;
+        return {
+            x : canvasX,
+            y : canvasY
+        };
+    };
     
     return util;
 });
