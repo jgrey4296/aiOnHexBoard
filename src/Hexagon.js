@@ -1,4 +1,7 @@
 /* jshint esversion : 6 */
+/**
+   Hexagon and pathfinding implemented from http://www.redblobgames.com/
+ */
 define(['underscore','d3','util'],function(_,d3,util){
 
     function isOffset(pOffset){
