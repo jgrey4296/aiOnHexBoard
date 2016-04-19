@@ -21,9 +21,11 @@ define(['underscore','d3','util'],function(_,d3,util){
     //odd r offset
     var Hexagon = function(ctx,height,width,columns,rows){
         this.centre = [width*0.5,height*0.5];
+        this.boardWidth = width;
+        this.boardHeight = height;
         //Hex Dimensions:
         this.radius = 20;
-        this.height = (2 * this.radius);
+        this.hexHeight = (2 * this.radius);
         //Board Dimensions:
         this.columns = columns || 20; //q
         this.rows = rows || 15; //r
@@ -59,7 +61,7 @@ define(['underscore','d3','util'],function(_,d3,util){
      */
     Hexagon.prototype.draw = function(){
         //Clear the screen
-        this.ctx.clearRect(0,0,this.width,this.height);
+        this.ctx.clearRect(-this.translationAmount.x,-this.translationAmount.y,this.boardWidth,this.boardHeight);
         //draw each hexagon
         this.positions.forEach(function(d,i){
             let screenPos = this.indexToScreen(i,this.radius),
