@@ -2,7 +2,7 @@
 /**
    Hexagon and pathfinding implemented from http://www.redblobgames.com/
  */
-define(['underscore','d3','util','priorityQueue'],function(_,d3,util,PriorityQueue){
+define(['underscore','d3','util','PriorityQueue'],function(_,d3,util,PriorityQueue){
 
     
     //odd r offset
@@ -270,6 +270,21 @@ define(['underscore','d3','util','priorityQueue'],function(_,d3,util,PriorityQue
         return (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) + Math.abs(a.z - b.z)) * 0.5;
     };
 
+    /**
+       Calculate the cost of a tile
+     */
+    Hexagon.prototype.costOf = function(tileIndex){
+        let tile = this.positions[tileIndex];
+        if(tile === undefined || tile.blocked){
+            return Infinity;
+        }
+        if(tile.cost === undefined){
+            return 1;
+        }else{
+            return tile.cost;
+        }        
+    };
+    
 
     /**
        Pathfind from a specified index node, to target index node
@@ -278,17 +293,22 @@ define(['underscore','d3','util','priorityQueue'],function(_,d3,util,PriorityQue
        @returns {Array} of indices
      */
     Hexagon.prototype.pathFind = function(a,b){
+        console.log('Source:',a,'Target:',b);
         if(this.positions[a] === undefined || this.positions[b] === undefined){
             throw new Error('invalid source or target');
         }
         let hRef = this,
-            frontier = [],
+            frontier = new PriorityQueue(),//minimising
             cameFrom = {},
+            costs = {},
             path = [],
             current = null,
             reduceFunc = function(m,v){
-                if(m[v] === undefined){
-                    frontier.push(v);
+                let newCost = costs[current] + hRef.costOf(v),
+                    distance = hRef.distance(v,b);
+                if(m[v] === undefined || newCost < costs[v] ){
+                    frontier.insert(v,newCost + distance);
+                    costs[v] = newCost;
                     hRef.colour(v,"grey");
                     m[v] = current;
                 }
@@ -296,16 +316,24 @@ define(['underscore','d3','util','priorityQueue'],function(_,d3,util,PriorityQue
             },
             filterFunc = function(d){
                 let position = hRef.positions[d];
-                return position !== undefined && !position.blocked;
+                if(position !== undefined && position.blocked !== true){
+                    return true;
+                }else{
+                    return false;
+                }
             };
 
-        frontier.push(a);
+        //start point:
+        frontier.insert(a,0);
         cameFrom[a] = null;
+        costs[a] = 0;
 
         //expand the frontier to the goal
-        while(frontier.length > 0){
-            current = frontier.shift();
-            if(current === b){
+        while(!frontier.empty()){
+            current = frontier.next();
+            hRef.colour(current,"blue");
+            let distance = hRef.distance(current,b);
+            if(current === b || cameFrom[b] !== undefined){
                 break;
             }
             let neighbourIndices = this.neighbours(current).filter(filterFunc);
@@ -314,7 +342,7 @@ define(['underscore','d3','util','priorityQueue'],function(_,d3,util,PriorityQue
         
         //walk back:
         current = b;
-        while(current !== null){
+        while(current !== null && current !== undefined){
             path.unshift(current);
             current = cameFrom[current];
         }
