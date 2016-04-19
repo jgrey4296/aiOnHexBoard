@@ -75,7 +75,7 @@ require(['d3','underscore','ExclusionFactBase','BTree','Hexagon','BehaviourDefin
     }));
 
     //Set debug flags for bob:
-    agents[0].setDebugFlags('actions','update','cleanup','preConflictSet','postConflictSet','failure','facts');
+    //agents[0].setDebugFlags('actions','update','cleanup','preConflictSet','postConflictSet','failure','facts');
     
     //Register the agents into the board:
     hexBoard.register(agents);
@@ -92,47 +92,75 @@ require(['d3','underscore','ExclusionFactBase','BTree','Hexagon','BehaviourDefin
     // },500);
 
 
-    //Triggering updates by keypress:
+    //shift detection:
+    let shift = false;
     d3.select('body')
         .on('keydown',function(){
-            agents.forEach(function(d){
-                d.update();
-                console.log("\n\n");
-            });
-            hexBoard.draw();
-            canvas.fillText(`Turn : ${turn++}`,400,-25);
+            if(d3.event.key === 'Shift'){
+                shift = true;
+            }else{
+                //update agents
+                agents.forEach(function(d){
+                    d.update();
+                    console.log("\n\n");
+                });
+                hexBoard.draw();
+                canvas.fillText(`Turn : ${turn++}`,400,-25);
+            }
+        })
+        .on('keyup',function(){
+            if(d3.event.key === 'Shift'){
+                shift = false;
+            }
         });
-
-
+    
     //Click based selection/pathfinding:
     d3.select('canvas')
         .on('mousedown',function(){
-            //convert the mouse click to a position in the canvas
-            let pos = util.screenToElementPosition(d3.event,this);
-            pos.x -= 50;
-            pos.y -= 50;
-            //convert that to a board position
-            let index = hexBoard.screenToIndex(pos.x,pos.y);
-            //store the position
-            selectedNodes.unshift(index);
-            
-            hexBoard.positions[index].colour = "blue";
-            //uncolour old positions
-            if(selectedNodes.length > 2){
-                let remainder = selectedNodes.splice(2);
-                remainder.forEach(d=>hexBoard.positions[d].colour = 'black');
+            if(shift){
+                addBlockade(d3.event,this);
+            }else{
+                pathFind(d3.event,this);
             }
-            //if two positions have been selected, pathfind between
-            if(selectedNodes.length === 2){
-                //remove the old path
-                priorPath.forEach(d=>hexBoard.positions[d].colour = "black");
-                let path = hexBoard.pathFind(selectedNodes[0],selectedNodes[1]);
-                priorPath = path;
-                path.forEach(d=>hexBoard.positions[d].colour = "blue");
-
-            }
-            hexBoard.draw();
+            hexBoard.draw();            
         });
+
+    var pathFind = function(event,element){
+            //convert the mouse click to a position in the canvas
+        let pos = util.screenToElementPosition(event,element),
+            //convert that to a board position
+            index = hexBoard.screenToIndex(pos.x,pos.y),
+            colour = shift ? "blue" : "green";
+        if(index === undefined){ return; }
+        //store the position
+        selectedNodes.unshift(index);
+            
+        hexBoard.positions[index].colour = colour;
+        //uncolour old positions
+        if(selectedNodes.length > 2){
+            let remainder = selectedNodes.splice(2);
+            remainder.forEach(d=>hexBoard.positions[d].colour = 'black');
+        }
+        //if two positions have been selected, pathfind between
+        if(selectedNodes.length === 2){
+            //remove the old path
+            priorPath.forEach(d=>hexBoard.positions[d].colour = "black");
+            //set the new path
+            let path = hexBoard.pathFind(selectedNodes[0],selectedNodes[1]);
+            priorPath = path;
+            path.forEach(d=>hexBoard.positions[d].colour = colour);
+        }
+    };
+    
+    var addBlockade = function(event,element){
+        let mousePosition = d3.mouse(element),
+            index = hexBoard.screenToIndex(mousePosition[0],mousePosition[1]);
+        if(index === undefined) { return; }
+
+        hexBoard.block(index);
+        
+    };
+
     
     //-----
     console.log(hexBoard);
