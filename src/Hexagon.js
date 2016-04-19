@@ -1,6 +1,20 @@
 /* jshint esversion : 6 */
 define(['underscore','d3','util'],function(_,d3,util){
 
+    function isOffset(pOffset){
+        if(pOffset.q && pOffset.r){
+            return true;
+        }
+        return false;
+    }
+
+    function isCube(pCube){
+        if(pCube.x && pCube.y && pCube.z){
+            return true;
+        }
+        return false;
+    }
+    
     //odd r offset
     var Hexagon = function(ctx,height,width,columns,rows){
         this.centre = [width*0.5,height*0.5];
@@ -10,19 +24,25 @@ define(['underscore','d3','util'],function(_,d3,util){
         //Board Dimensions:
         this.columns = columns || 20; //q
         this.rows = rows || 15; //r
+        //store each individual board element:
         this.positions = Array(this.columns*this.rows).fill(0).map(function(d){
             return {colour : "black", agents : {}};
         });
         this.count = 0,
         //Current position:
         this.curIndex = this.offsetToIndex({q:0,r:0});
-        //Offset the entire board
+        //Offset the drawn board
         this.ctx = ctx;
-        ctx.translate(50,50);
-
+        this.translationAmount = {
+            x : 50,
+            y : 50
+        };
+        ctx.translate(this.translationAmount.x,this.translationAmount.y);
+        //Record all registered agents used in this hexboard
         this.agents = {};
     };
 
+    //place an agent into a board position
     Hexagon.prototype.register = function(agents){
         agents.forEach(function(d){
             let index = this.offsetToIndex(d.values);
@@ -47,7 +67,39 @@ define(['underscore','d3','util'],function(_,d3,util){
 
     //------------------------------
     //Utilities:
+    Hexagon.prototype.screenToIndex = function(screenX,screenY){
+        let q = (screenX * Math.sqrt(3)/3 - screenY/3) / this.radius,
+            r = screenY * 2/3 / this.radius,
+            rounded = this.round({x : q, y : -q-r, z : r});
 
+        return this.offsetToIndex(this.cubeToOffset(rounded));
+    };
+
+
+    Hexagon.prototype.round = function(cube){
+        let rx = Math.round(cube.x),
+            ry = Math.round(cube.y),
+            rz = Math.round(cube.z);
+
+        let xd = Math.abs(rx - cube.x),
+            yd = Math.abs(ry - cube.y),
+            zd = Math.abs(rz - cube.z);
+
+        if(xd > yd && xd > zd){
+            rx = -ry-rz;
+        }else if(yd > zd){
+            ry = -rx-rz;
+        }else{
+            rz = -rx-ry;
+        }
+
+        return {
+            x : rx,
+            y : ry,
+            z : rz
+        };        
+    };
+    
     //index -> screen position
     Hexagon.prototype.indexToScreen = function(index,radius){
         let offset = this.indexToOffset(index), //location
@@ -64,7 +116,7 @@ define(['underscore','d3','util'],function(_,d3,util){
 
     //index -> cube
     Hexagon.prototype.indexToCube = function(offset){
-        return this.offsetToCube(indexToOffset(offset));
+        return this.offsetToCube(this.indexToOffset(offset));
     };
     
     
@@ -105,7 +157,12 @@ define(['underscore','d3','util'],function(_,d3,util){
         };
     };
 
-    //get neighbours of a hexagon
+    /**
+       neighbours : Get the 6 neighbours of a node,
+       filters invalid neighbours
+       @param index The central node, as an index
+       @returns {Array} Array of indices of neighbours
+     */
     Hexagon.prototype.neighbours = function(index){
         let positionsLength = this.positions.length,
             rows = this.rows,
@@ -180,6 +237,64 @@ define(['underscore','d3','util'],function(_,d3,util){
         this.positions[newIndex].agents[agentId] = agent;
     };
 
+    //Hex based distance
+    Hexagon.prototype.distance = function(a,b){
+        if(typeof a === 'number'){
+            a = this.indexToCube(a);
+        }else if(isOffset(a)){
+            a = this.offsetToCube(a);
+        }
+        if(typeof b === 'number'){
+            b = this.indexToCube(b);
+        }else if(isOffset(b)){
+            b = this.offsetToCube(b);
+        }
+        
+        return (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) + Math.abs(a.z - b.z)) * 0.5;
+    };
+
+
+    /**
+       Pathfind from a specified index node, to target index node
+       @param a as index
+       @param b as index
+       @returns {Array} of indices
+     */
+    Hexagon.prototype.pathFind = function(a,b){
+        if(this.positions[a] === undefined || this.positions[b] === undefined){
+            throw new Error('invalid source or target');
+        }
+        let frontier = [],
+            cameFrom = {},
+            path = [];
+        frontier.push(a);
+        cameFrom[a] = null;
+
+        //expand the frontier to the goal
+        while(frontier.length > 0){
+            let current = frontier.shift();
+            if(current === b){
+                break;
+            }
+            let neighbours = this.neighbours(current);
+            cameFrom = neighbours.reduce(function(m,v){
+                if(m[v] === undefined){
+                    frontier.push(v);
+                    m[v] = current;
+                }
+                return m;
+            },cameFrom);
+        }        
+
+        //walk back:
+        let current = b;
+        while(current !== null){
+            path.unshift(current);
+            current = cameFrom[current];
+        }
+        return path;
+    };
+    
     
     return Hexagon;
 });
