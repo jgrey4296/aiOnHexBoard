@@ -81,6 +81,8 @@ require(['d3','underscore','ExclusionFactBase','BTree','Hexagon','BehaviourDefin
     //     hexBoard.draw();
     // },500);
 
+    let turn = 0;
+    canvas.font ="20px Georgia";
     d3.select('body')
         .on('keydown',function(){
             agents.forEach(function(d){
@@ -88,6 +90,7 @@ require(['d3','underscore','ExclusionFactBase','BTree','Hexagon','BehaviourDefin
                 console.log("\n\n");
             });
             hexBoard.draw();
+            canvas.fillText(`Turn : ${turn++}`,400,-25);
         });
 
     let selectedNodes = [],
