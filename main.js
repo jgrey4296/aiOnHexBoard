@@ -1,3 +1,4 @@
+/* jshint esversion : 6 */
 require.config({
     baseUrl : "/src",
     paths:{
@@ -14,7 +15,8 @@ require.config({
 });
 
 require(['d3','underscore','ExclusionFactBase','BTree','Hexagon','BehaviourDefinitions','util'],function(d3,_,ExclusionFactBase,BTree,Hexagon,BModule,util){
-    console.log('initial');
+    "use strict";
+    console.log('Hexagon AI Behaviour Tree Test');
     let height = 800,
         width = 800,
         movements = {
@@ -25,7 +27,6 @@ require(['d3','underscore','ExclusionFactBase','BTree','Hexagon','BehaviourDefin
             "z" : "downLeft",
             "c" : "downRight"
         };
-
     
     //Create a Canvas helper function:
     function drawCanvas(name,before){
@@ -41,18 +42,26 @@ require(['d3','underscore','ExclusionFactBase','BTree','Hexagon','BehaviourDefin
 
     //create the canvas:
     let canvas = drawCanvas("Hexagon AI Test"),
-    //Then create the hexagon board:
-        hexBoard = new Hexagon(canvas,height,width);
+        //Then create the hexagon board:
+        hexBoard = new Hexagon(canvas,height,width),
+        //Create the characters, place them on the board:
+        baseBTree = new BTree(undefined,BModule),
+        agents = [],
+        //the current turn:
+        turn = 0,
+        //nodes that have been clicked:
+        selectedNodes = [],
+        //the last found path:
+        priorPath = [];
 
-    //Create the characters, place them on the board:
-    let baseBTree = new BTree(undefined,BModule),
-        agents = [];
+    canvas.font ="20px Georgia";
+    
+    //Creation of agents:
     agents.push(baseBTree.newCharacter({
         name : "bob",
         colour : "red",
         q : 0,
         r : 0,
-        baseTile : { colour : "black" },
         board : hexBoard,
         movements : movements
     }));
@@ -61,19 +70,20 @@ require(['d3','underscore','ExclusionFactBase','BTree','Hexagon','BehaviourDefin
         colour : "blue",
         q : 1,
         r : 1,
-        baseTile : { colour : "black" },
         board : hexBoard,
         movements : movements
     }));
+
+    //Set debug flags for bob:
     agents[0].setDebugFlags('actions','update','cleanup','preConflictSet','postConflictSet','failure','facts');
     
     //Register the agents into the board:
     hexBoard.register(agents);
     
-    //run the behaviours
+    //Draw the board initially:
     hexBoard.draw();
     
-    //Register key presses
+    //For triggering updates on a timer:
     // setInterval(function(){
     //     agents.forEach(function(d){
     //         d.update();
@@ -81,8 +91,8 @@ require(['d3','underscore','ExclusionFactBase','BTree','Hexagon','BehaviourDefin
     //     hexBoard.draw();
     // },500);
 
-    let turn = 0;
-    canvas.font ="20px Georgia";
+
+    //Triggering updates by keypress:
     d3.select('body')
         .on('keydown',function(){
             agents.forEach(function(d){
@@ -93,9 +103,8 @@ require(['d3','underscore','ExclusionFactBase','BTree','Hexagon','BehaviourDefin
             canvas.fillText(`Turn : ${turn++}`,400,-25);
         });
 
-    let selectedNodes = [],
-        priorPath = [];
-    
+
+    //Click based selection/pathfinding:
     d3.select('canvas')
         .on('mousedown',function(){
             //convert the mouse click to a position in the canvas
@@ -124,10 +133,6 @@ require(['d3','underscore','ExclusionFactBase','BTree','Hexagon','BehaviourDefin
             }
             hexBoard.draw();
         });
-    
-
-
-    
     
     //-----
     console.log(hexBoard);
