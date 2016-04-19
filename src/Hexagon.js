@@ -4,19 +4,6 @@
  */
 define(['underscore','d3','util'],function(_,d3,util){
 
-    function isOffset(pOffset){
-        if(pOffset.q && pOffset.r){
-            return true;
-        }
-        return false;
-    }
-
-    function isCube(pCube){
-        if(pCube.x && pCube.y && pCube.z){
-            return true;
-        }
-        return false;
-    }
     
     //odd r offset
     var Hexagon = function(ctx,height,width,columns,rows){
@@ -33,7 +20,7 @@ define(['underscore','d3','util'],function(_,d3,util){
         this.positions = Array(this.columns*this.rows).fill(0).map(function(d){
             return {colour : "black", agents : {}};
         });
-        this.count = 0,
+        this.count = 0;
         //Current position:
         this.curIndex = this.offsetToIndex({q:0,r:0});
         //Offset the drawn board
@@ -271,7 +258,15 @@ define(['underscore','d3','util'],function(_,d3,util){
         }
         let frontier = [],
             cameFrom = {},
-            path = [];
+            path = [],
+            reduceFunc = function(m,v){
+                if(m[v] === undefined){
+                    frontier.push(v);
+                    m[v] = current;
+                }
+                return m;
+            };
+
         frontier.push(a);
         cameFrom[a] = null;
 
@@ -282,13 +277,7 @@ define(['underscore','d3','util'],function(_,d3,util){
                 break;
             }
             let neighbours = this.neighbours(current);
-            cameFrom = neighbours.reduce(function(m,v){
-                if(m[v] === undefined){
-                    frontier.push(v);
-                    m[v] = current;
-                }
-                return m;
-            },cameFrom);
+            cameFrom = neighbours.reduce(reduceFunc,cameFrom);
         }        
 
         //walk back:
@@ -299,7 +288,24 @@ define(['underscore','d3','util'],function(_,d3,util){
         }
         return path;
     };
-    
+
+
+    //----------------------------------------
+    //simple utilities
+    function isOffset(pOffset){
+        if(pOffset.q && pOffset.r){
+            return true;
+        }
+        return false;
+    }
+
+    function isCube(pCube){
+        if(pCube.x && pCube.y && pCube.z){
+            return true;
+        }
+        return false;
+    }
+
     
     return Hexagon;
 });
