@@ -57,26 +57,48 @@ define(['underscore','d3','util'],function(_,d3,util){
         },this);
     };
 
+
+    Hexagon.prototype.block = function(index){
+        if(this.positions[index] === undefined){
+            throw new Error('invalid position');
+        }
+        let position = this.positions[index];
+        if(position.blocked !== true){
+            position.colour = "red";
+            position.blocked = true;
+        }else{
+            position.colour = "black";
+            position.blocked = false;
+        }
+    };
+
+    
     //------------------------------
     //Utilities:
     Hexagon.prototype.screenToIndex = function(screenX,screenY){
+        screenX -= this.translationAmount.x;
+        screenY -= this.translationAmount.y;
         let q = (screenX * Math.sqrt(3)/3 - screenY/3) / this.radius,
             r = screenY * 2/3 / this.radius,
             rounded = this.round({x : q, y : -q-r, z : r});
 
-        return this.offsetToIndex(this.cubeToOffset(rounded));
+        try{
+            return this.offsetToIndex(this.cubeToOffset(rounded));
+        }catch(error){
+            return undefined;
+        }
     };
 
 
     Hexagon.prototype.round = function(cube){
         let rx = Math.round(cube.x),
             ry = Math.round(cube.y),
-            rz = Math.round(cube.z);
-
-        let xd = Math.abs(rx - cube.x),
+            rz = Math.round(cube.z),
+            //differences:
+            xd = Math.abs(rx - cube.x),
             yd = Math.abs(ry - cube.y),
             zd = Math.abs(rz - cube.z);
-
+        //correct the error:
         if(xd > yd && xd > zd){
             rx = -ry-rz;
         }else if(yd > zd){
@@ -84,12 +106,8 @@ define(['underscore','d3','util'],function(_,d3,util){
         }else{
             rz = -rx-ry;
         }
-
-        return {
-            x : rx,
-            y : ry,
-            z : rz
-        };        
+        //Return the cube position:
+        return { x : rx, y : ry, z : rz };
     };
     
     //index -> screen position
@@ -114,6 +132,9 @@ define(['underscore','d3','util'],function(_,d3,util){
     
     //offset -> index
     Hexagon.prototype.offsetToIndex = function(offset){
+        if(offset.q < 0 || offset.q > this.columns || offset.r < 0 || offset.r > this.rows){
+            throw new Error('out of bounds');
+        }
         return (offset.q) + (offset.r * this.columns);
     };
     
@@ -142,11 +163,7 @@ define(['underscore','d3','util'],function(_,d3,util){
     Hexagon.prototype.cubeToOffset = function(cube){
         let col = cube.x + (cube.z - (cube.z%2)) /2,
             row = cube.z;
-        
-        return {
-            q : col,
-            r : row
-        };
+        return { q : col, r : row };
     };
 
     /**
@@ -256,15 +273,21 @@ define(['underscore','d3','util'],function(_,d3,util){
         if(this.positions[a] === undefined || this.positions[b] === undefined){
             throw new Error('invalid source or target');
         }
-        let frontier = [],
+        let hRef = this,
+            frontier = [],
             cameFrom = {},
             path = [],
+            current = null,
             reduceFunc = function(m,v){
                 if(m[v] === undefined){
                     frontier.push(v);
                     m[v] = current;
                 }
                 return m;
+            },
+            filterFunc = function(d){
+                let position = hRef.positions[d];
+                return position !== undefined && !position.blocked;
             };
 
         frontier.push(a);
@@ -272,16 +295,16 @@ define(['underscore','d3','util'],function(_,d3,util){
 
         //expand the frontier to the goal
         while(frontier.length > 0){
-            let current = frontier.shift();
+            current = frontier.shift();
             if(current === b){
                 break;
             }
-            let neighbours = this.neighbours(current);
-            cameFrom = neighbours.reduce(reduceFunc,cameFrom);
+            let neighbourIndices = this.neighbours(current).filter(filterFunc);
+            cameFrom = neighbourIndices.reduce(reduceFunc,cameFrom);
         }        
 
         //walk back:
-        let current = b;
+        current = b;
         while(current !== null){
             path.unshift(current);
             current = cameFrom[current];
