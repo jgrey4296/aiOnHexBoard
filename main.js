@@ -13,7 +13,7 @@ require.config({
     }
 });
 
-require(['d3','underscore','ExclusionFactBase','BTree','Hexagon','BehaviourDefinitions'],function(d3,_,ExclusionFactBase,BTree,Hexagon,BModule){
+require(['d3','underscore','ExclusionFactBase','BTree','Hexagon','BehaviourDefinitions','util'],function(d3,_,ExclusionFactBase,BTree,Hexagon,BModule,util){
     console.log('initial');
     let height = 800,
         width = 800,
@@ -65,6 +65,8 @@ require(['d3','underscore','ExclusionFactBase','BTree','Hexagon','BehaviourDefin
         board : hexBoard,
         movements : movements
     }));
+    agents[0].setDebugFlags('actions','update','cleanup','preConflictSet','postConflictSet','failure','facts');
+    
     //Register the agents into the board:
     hexBoard.register(agents);
     
@@ -72,13 +74,58 @@ require(['d3','underscore','ExclusionFactBase','BTree','Hexagon','BehaviourDefin
     hexBoard.draw();
     
     //Register key presses
-    d3.select('body').on('keyup',function(){
-        agents.forEach(function(d){
-            d.update();
-        });
-        hexBoard.draw();
-    });
+    // setInterval(function(){
+    //     agents.forEach(function(d){
+    //         d.update();
+    //     });
+    //     hexBoard.draw();
+    // },500);
 
+    d3.select('body')
+        .on('keydown',function(){
+            agents.forEach(function(d){
+                d.update();
+                console.log("\n\n");
+            });
+            hexBoard.draw();
+        });
+
+    let selectedNodes = [],
+        priorPath = [];
+    
+    d3.select('canvas')
+        .on('mousedown',function(){
+            //convert the mouse click to a position in the canvas
+            let pos = util.screenToElementPosition(d3.event,this);
+            pos.x -= 50;
+            pos.y -= 50;
+            //convert that to a board position
+            let index = hexBoard.screenToIndex(pos.x,pos.y);
+            //store the position
+            selectedNodes.unshift(index);
+            
+            hexBoard.positions[index].colour = "blue";
+            //uncolour old positions
+            if(selectedNodes.length > 2){
+                let remainder = selectedNodes.splice(2);
+                remainder.forEach(d=>hexBoard.positions[d].colour = 'black');
+            }
+            //if two positions have been selected, pathfind between
+            if(selectedNodes.length === 2){
+                //remove the old path
+                priorPath.forEach(d=>hexBoard.positions[d].colour = "black");
+                let path = hexBoard.pathFind(selectedNodes[0],selectedNodes[1]);
+                priorPath = path;
+                path.forEach(d=>hexBoard.positions[d].colour = "blue");
+
+            }
+            hexBoard.draw();
+        });
+    
+
+
+    
+    
     //-----
     console.log(hexBoard);
 });
