@@ -19,6 +19,7 @@ define(['underscore','d3'],function(_,d3){
                 ctx.lineTo(Math.floor(p1[0]),Math.floor(p1[1]));
             });
             ctx.fill();
+            ctx.closePath();
         }
 
         ctx.strokeStyle = "grey";
@@ -30,7 +31,8 @@ define(['underscore','d3'],function(_,d3){
             ctx.lineTo(Math.floor(p2[0]),Math.floor(p2[1]));
         });
         ctx.stroke();
-
+        ctx.closePath();
+        
         ctx.fillStyle = "black";
         ctx.fillRect(centre[0]-2,centre[1]-2,4,4);
     };
@@ -49,6 +51,7 @@ define(['underscore','d3'],function(_,d3){
         ctx.beginPath();
         ctx.arc(xpos,ypos,radius,0,2*Math.PI);
         ctx.stroke();
+        ctx.closePath();
     };
 
     //from http://stackoverflow.com/questions/55677/how-do-i-get-the-coordinates-of-a-mouse-click-on-a-canvas-element
