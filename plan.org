@@ -5,4 +5,5 @@ interacting on the board.
 *** DONE Setup the board as an object
 ** DONE Creation of Agents
 *** DONE Agents registered on Board
-*** TODO Agents manipulating board
+*** DONE Agents manipulating board
+
