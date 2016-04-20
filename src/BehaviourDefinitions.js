@@ -16,6 +16,7 @@ define(['underscore'],function(_){
     });
 
     //----------------------------------------
+    //Note : Gen colour would be better as an entry action
     //Assert a colour, once
     BModule.push(function(bTree){
         bTree.Behaviour('genColour')
@@ -31,7 +32,7 @@ define(['underscore'],function(_){
     });
 
     //----------------------------------------
-    //Move behaviour
+    //Simple Move behaviour, goal less
     BModule.push(function(bTree){
         bTree.Behaviour('move')
             .priority(1)
@@ -54,6 +55,7 @@ define(['underscore'],function(_){
     });
 
     //generate the path:
+    //note: this would be better as an entry condition
     BModule.push(function(bTree){
         bTree.Behaviour('pathFind')
         //a path hasnt been chosen
@@ -83,7 +85,6 @@ define(['underscore'],function(_){
             .persistCondition(a=>`!!.${a.values.name}.pathFollowed`)
         //move along the path
             .performAction(a=>{
-                console.log('following path');
                 a.values.board.moveTo(a.id,a.values.path[a.values.pathIndex++]);
                 if(a.values.pathIndex >= a.values.path.length){
                     a.assert(`.${a.values.name}.pathFollowed`);
@@ -92,10 +93,15 @@ define(['underscore'],function(_){
 
     });
 
+    //cleanup the behaviour
+    //note: this would be better as a finish action
     BModule.push(function(bTree){
         bTree.Behaviour('finishPath')
-            .performAction(a=>{
+            .entryCondition(a=>`.${a.values.name}.colour!%{x}`)
+            .performAction((a,n)=>{
                 console.log('finishing path');
+                let currentPos = a.values.board.offsetToIndex(a.values);
+                a.values.board.colour(currentPos,n.bindings.x);
                 a.retract(`.${a.values.name}.pathChosen`,
                           `.${a.values.name}.pathFollowed`);
             });
