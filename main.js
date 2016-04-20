@@ -76,7 +76,7 @@ require(['d3','underscore','ExclusionFactBase','BTree','Hexagon','BehaviourDefin
     }));
 
     //Set debug flags for bob:
-    //agents[0].setDebugFlags('actions','update','cleanup','preConflictSet','postConflictSet','failure','facts');
+    agents[0].setDebugFlags('actions','update','cleanup','preConflictSet','postConflictSet','failure','facts');
     
     //Register the agents into the board:
     hexBoard.register(agents);
