@@ -12,9 +12,10 @@ define(['underscore'],function(_){
         bTree.Behaviour('initialTree')
             .type('sequential')
             .persistent(true)
-            .children('genColour','move');
+            .children('genColour','moveToRandomTarget');
     });
 
+    //----------------------------------------
     //Assert a colour, once
     BModule.push(function(bTree){
         bTree.Behaviour('genColour')
@@ -29,6 +30,7 @@ define(['underscore'],function(_){
         bTree.Behaviour('genColour');
     });
 
+    //----------------------------------------
     //Move behaviour
     BModule.push(function(bTree){
         bTree.Behaviour('move')
@@ -42,7 +44,64 @@ define(['underscore'],function(_){
             });
     });
 
+    //----------------------------------------
+    //Pathfind to random locations:
+    BModule.push(function(bTree){
+        bTree.Behaviour('moveToRandomTarget')
+            .persistent(true)
+            .type('sequential')
+            .children('pathFind','followPath','finishPath');
+    });
 
+    //generate the path:
+    BModule.push(function(bTree){
+        bTree.Behaviour('pathFind')
+        //a path hasnt been chosen
+            .entryCondition(a=>`!!.${a.values.name}.pathChosen`)
+        //pick a target, generate the path from the board
+            .performAction(a=>{
+                console.log('finding path');
+                let randomIndex = Math.floor(Math.random() * a.values.board.positions.length-1);
+                a.values.pathTarget = randomIndex;
+                let currentIndex = a.values.board.offsetToIndex({
+                    q : a.values.q,
+                    r : a.values.r
+                });
+                //store the path
+                a.values.path = a.values.board.pathFind(currentIndex,randomIndex);
+                a.values.pathIndex = 0;
+                a.assert(`.${a.values.name}.pathChosen`);
+            });
+    });
+    
+
+    BModule.push(function(bTree){
+        bTree.Behaviour('followPath')
+            .persistent(true)
+            .entryCondition(a=>`.${a.values.name}.pathChosen`)
+        //persistent until the path has finished
+            .persistCondition(a=>`!!.${a.values.name}.pathFollowed`)
+        //move along the path
+            .performAction(a=>{
+                console.log('following path');
+                a.values.board.moveTo(a.id,a.values.path[a.values.pathIndex++]);
+                if(a.values.pathIndex >= a.values.path.length){
+                    a.assert(`.${a.values.name}.pathFollowed`);
+                }
+            });
+
+    });
+
+    BModule.push(function(bTree){
+        bTree.Behaviour('finishPath')
+            .performAction(a=>{
+                console.log('finishing path');
+                a.retract(`.${a.values.name}.pathChosen`,
+                          `.${a.values.name}.pathFollowed`);
+            });
+    });
+
+    
 
     //utility function to generate a colour. from stack overflow
     function rndColour() {
