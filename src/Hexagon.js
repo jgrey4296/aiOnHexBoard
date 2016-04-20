@@ -210,6 +210,30 @@ define(['underscore','d3','util','PriorityQueue'],function(_,d3,util,PriorityQue
         return n_indices_filtered;
     };
 
+    Hexagon.prototype.moveTo = function(agentId,targetTile){
+        let agent = this.agents[agentId];
+        if(agent === undefined){
+            throw new Error('unrecognised agent');
+        }
+        let agentOffset = agent.values,
+            oldIndex = this.offsetToIndex(agentOffset),
+            newIndex = targetTile,
+            newOffset = this.indexToOffset(targetTile);
+        
+        if(this.positions[newIndex] === undefined){
+            return;
+        }
+        
+        agent.values.q = newOffset.q;
+        agent.values.r = newOffset.r;
+        //remove from the old position
+        delete this.positions[oldIndex].agents[agentId];
+        //add to the new position:
+        this.positions[newIndex].agents[agentId] = agent;
+   
+    };
+
+    
     /**
        Move the specified agent (by id), from its current position,
        to a new position
@@ -309,7 +333,7 @@ define(['underscore','d3','util','PriorityQueue'],function(_,d3,util,PriorityQue
                 if(m[v] === undefined || newCost < costs[v] ){
                     frontier.insert(v,newCost + distance);
                     costs[v] = newCost;
-                    hRef.colour(v,"grey");
+                    //hRef.colour(v,"grey");
                     m[v] = current;
                 }
                 return m;
@@ -331,7 +355,7 @@ define(['underscore','d3','util','PriorityQueue'],function(_,d3,util,PriorityQue
         //expand the frontier to the goal
         while(!frontier.empty()){
             current = frontier.next();
-            hRef.colour(current,"blue");
+            //hRef.colour(current,"blue");
             let distance = hRef.distance(current,b);
             if(current === b || cameFrom[b] !== undefined){
                 break;
