@@ -178,10 +178,6 @@ define(['underscore','ExclusionFactBase'],function(_,ExFB){
         //indexed by id
         this.children = {};
 
-        //Real node current status:
-        this.status = ACTIVE;
-        this.returnStatus = SUCCESS;
-        this.lastReturnStatus = SUCCESS;
         //for keeping track of progression through a sequence
         this.sequenceCounter = 0;
         //for parallel failures
@@ -198,29 +194,13 @@ define(['underscore','ExclusionFactBase'],function(_,ExFB){
         //which of the abstract nodes is being used
         //current specificity. goes 0 -> abstractNodes.length
         //shortcut to the selected abstract
-        let i = 0;
-        this.currentAbstract = this.abstractNodes[i];
-        //get an applicable specificity, if you are dealing with an actual abstract based node
-        if(this.abstractNodes.length > 0){
-            while(this.currentAbstract && !this.bTreeRef.testConditions(this.currentAbstract.entryConditions,this)){
-                this.currentAbstract = this.abstractNodes[++i];
-            }
-            if(this.currentAbstract){
-                //perform the entry actions of the initial successful abstract:
-                //a real node will only be created if the entry conditions of the specificity pass
-                this.runActions('entryActions');
-            }else{
-                throw new BTreeError(`No suitable abstract for node: ${this.abstractNodes[0].name}`);
-            }
-        }
         //if we get here, the node is valid, so integrate it into the tree/conflict set
-        
+        this.findSpecificity();
         //--------------------
         //add self to the btree and parent, and the conflict set
         //--------------------
         this.bTreeRef.allRealNodes[this.id] = this;
         if(this.parent){
-            this.parent.status = INACTIVE;
             this.bTreeRef.conflictSet.delete(this.parent);
             this.parent.children[this.id] = this;
         }
@@ -251,7 +231,6 @@ define(['underscore','ExclusionFactBase'],function(_,ExFB){
         if(this.currentAbstract.type === SEQUENTIAL){            
             if(status === SUCCESS){
                 ////increment step counter
-                this.status = ACTIVE;
                 this.sequenceCounter++;
                 this.SEQUENTIAL_update();
             }else {
@@ -272,22 +251,58 @@ define(['underscore','ExclusionFactBase'],function(_,ExFB){
             }catch(error){
                 if(!(error instanceof BTreeError)){ throw error; }                   
                 //console.log(error);
-                this.bTreeRef('failure',error);
+                this.bTreeRef.debug('failure',error);
                 this.informParent(FAIL);
             }
         }
     };
 
-    BTreeNodeReal.prototype.informParent = function(status){
+    BTreeNodeReal.prototype.informParent = function(status,override){
         //console.log('informing parent of ',this.currentAbstract.name,status);
-        if(this.parent){
+        this.bTreeRef.debug('update',`informing parent:`+status.toString());
+        if(override === undefined && this.currentAbstract.persistent && this.bTreeRef.testConditions(this.currentAbstract.persistConditions)){
+            this.bTreeRef.debug('update','resetting persistent');
+            //reset the node:
+            this.sequenceCounter = 0;
+            this.parallelFailureCounter = 0;
+            this.parallelSuccessCounter = 0;
+            this.performed = false;
+            //reset the specificity:
+            try {
+                this.findSpecificity(true);
+            }catch(error){
+                if(!(error instanceof BTreeError)){ throw error; }
+                this.bTreeRef.debug('failure',error);
+                this.informParent(FAIL,true);
+            }
+        }else if(this.parent){
             this.parent.inform(this.id,status);
         }else if(this.id === this.bTreeRef.root.id){
             this.bTreeRef.root = new BTreeNodeReal(this.abstractNodes,undefined,undefined,this.bTreeRef);
             this.cleanup(FAIL);
         }
     };
-    
+
+    /**
+       Figure out the correct specificity for the node
+     */
+    BTreeNodeReal.prototype.findSpecificity = function(persistentEntry){
+        let i = 0;
+        this.currentAbstract = this.abstractNodes[i];
+        //get an applicable specificity, if you are dealing with an actual abstract based node
+        if(this.abstractNodes.length > 0){
+            while(this.currentAbstract && !this.bTreeRef.testConditions(this.currentAbstract.entryConditions,this)){
+                this.currentAbstract = this.abstractNodes[++i];
+            }
+            if(this.currentAbstract && !persistentEntry){
+                //perform the entry actions of the initial successful abstract:
+                //a real node will only be created if the entry conditions of the specificity pass
+                this.runActions('entryActions');
+            }else if(this.currentAbstract === undefined){
+                throw new BTreeError(`No suitable abstract for node: ${this.abstractNodes[0].name}`);
+            }
+        }
+    }    
 
     /**
        update
@@ -300,12 +315,13 @@ define(['underscore','ExclusionFactBase'],function(_,ExFB){
                 throw new BTreeError("Behaviour Fails");
             }
             if(this.shouldWait()){
-                this.status = WAIT;
                 return;
             }
-            if(this.performed === undefined){
+            if(this.performed !== true){
                 this.runActions('performActions');
                 this.performed = true;
+            }else{
+                console.log('not running perform actions');
             }
             this.typeUpdate();
         }catch(error){
@@ -440,19 +456,6 @@ define(['underscore','ExclusionFactBase'],function(_,ExFB){
         //remove self from the parent
         if(this.parent){
             delete this.parent.children[this.id];
-        }
-        //if persistent, and the persistent condition [is]/isnt(?) met, re-add:
-        if(this.currentAbstract.persistent && this.bTreeRef.testConditions(this.currentAbstract.persistConditions) && this.parent){
-            try{
-                this.parent.addChild(this.currentAbstract.name);
-            }catch(error){
-                if(!(error instanceof BTreeError)){ throw error; }                   
-                //although cleanup is called from the parent's inform method,
-                //cycles are protected against by only cleaning up if the
-                //node is stored as a child, which by this point the node isnt.
-                this.bTreeRef.debug('failure',error);
-                this.informParent(FAIL);
-            }
         }
         //remove the parent reference
         this.parent = null;
@@ -656,7 +659,7 @@ define(['underscore','ExclusionFactBase'],function(_,ExFB){
     };
 
     BTree.prototype.retract = function(...values){
-        values.forEach(d=>tihs.fb.retract(d));
+        values.forEach(d=>this.fb.retract(d));
     };
     
     //Load descriptions of behaviours
@@ -746,12 +749,18 @@ define(['underscore','ExclusionFactBase'],function(_,ExFB){
             currentTestStatement;
         while(lastResult && i < testStatements.length ){
             currentTestStatement = testStatements[i++];
+            //call the function
             if(typeof currentTestStatement === 'function'){
                 currentTestStatement = currentTestStatement(this,callingNode);
             }
             //console.log("Testing: ",currentTestStatement);
-            //returns either an object of bindings, or true/false
-            lastResult = this.fb.exists(currentTestStatement);
+            //if the function returned a boolean, use that, otherwise exists
+            if(typeof currentTestStatement === 'boolean'){
+                lastResult = currentTestStatement;
+            }else{
+                //returns either an object of bindings, or true/false
+                lastResult = this.fb.exists(currentTestStatement);
+            }
             if(callingNode && typeof lastResult !== 'boolean'){
                 lastResult = callingNode.integrateBindings(lastResult);
             }
