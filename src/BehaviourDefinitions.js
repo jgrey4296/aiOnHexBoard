@@ -3,7 +3,7 @@
   A Behaviour Module,
   defines an array of definition functions, which will be called by the Behaviour Tree.
 */
-define(['underscore'],function(_){
+define(['lodash'],function(_){
     "use strict";
     let BModule = [];
 
@@ -12,7 +12,7 @@ define(['underscore'],function(_){
         bTree.Behaviour('initialTree')
             .type('sequential')
             .persistent(true)
-            .children('genColour','moveToRandomTarget');
+            .subgoal('genColour','moveToRandomTarget');
     });
 
     //----------------------------------------
@@ -20,7 +20,7 @@ define(['underscore'],function(_){
     //Assert a colour, once
     BModule.push(function(bTree){
         bTree.Behaviour('genColour')
-            .specificity(5)
+            .preference(5)
             .priority(2)
             .entryCondition(a=>`!!.${a.values.name}.colour`)
             .performAction(a=>a.assert(`.${a.values.name}.colour!${rndColour()}`));
@@ -50,60 +50,49 @@ define(['underscore'],function(_){
     BModule.push(function(bTree){
         bTree.Behaviour('moveToRandomTarget')
             .persistent(true)
-            .type('sequential')
-            .children('pathFind','followPath','finishPath');
+            .entryCondition(a=>`!!.${a.values.name}.pathChosen`,
+                            a=>`.${a.values.name}.colour!%{x}`)
+            .subgoal('followPath');
     });
 
-    //generate the path:
-    //note: this would be better as an entry condition
     BModule.push(function(bTree){
-        bTree.Behaviour('pathFind')
-        //a path hasnt been chosen
-            .entryCondition(a=>`!!.${a.values.name}.pathChosen`)
-        //pick a target, generate the path from the board
-            .performAction(a=>{
-                console.log('finding path');
+        bTree.Behaviour('followPath')
+        //ENTRY
+            .entryCondition((a,n)=>n.parent.bindings.x !== undefined)
+            .entryAction(a=>{
+                //choose a random place to go to
                 let randomIndex = Math.floor(Math.random() * a.values.board.positions.length-1);
                 a.values.pathTarget = randomIndex;
                 let currentIndex = a.values.board.offsetToIndex({
                     q : a.values.q,
                     r : a.values.r
                 });
-                //store the path
+                //generate a path
                 a.values.path = a.values.board.pathFind(currentIndex,randomIndex);
+                //store it
                 a.values.pathIndex = 0;
                 a.assert(`.${a.values.name}.pathChosen`);
-            });
-    });
-    
-
-    BModule.push(function(bTree){
-        bTree.Behaviour('followPath')
+            })
+        //PERSISTENCE:
             .persistent(true)
-            .entryCondition(a=>`.${a.values.name}.pathChosen`)
         //persistent until the path has finished
-            .persistCondition(a=>`!!.${a.values.name}.pathFollowed`)
+            .persistCondition(a=>`!!.${a.values.name}.pathFollowed`,
+                              a=>`.${a.values.name}.pathChosen`)
         //move along the path
             .performAction(a=>{
                 a.values.board.moveTo(a.id,a.values.path[a.values.pathIndex++]);
+                //Figure out when completed:
                 if(a.values.pathIndex >= a.values.path.length){
                     a.assert(`.${a.values.name}.pathFollowed`);
                 }
-            });
-
-    });
-
-    //cleanup the behaviour
-    //note: this would be better as a finish action
-    BModule.push(function(bTree){
-        bTree.Behaviour('finishPath')
-            .entryCondition(a=>`.${a.values.name}.colour!%{x}`)
-            .performAction((a,n)=>{
-                console.log('finishing path');
+            })
+        //FINISH:
+            .exitAction((a,n)=>{
                 let currentPos = a.values.board.offsetToIndex(a.values);
-                a.values.board.colour(currentPos,n.bindings.x);
+                a.values.board.colour(currentPos,n.parent.bindings.x);
                 a.retract(`.${a.values.name}.pathChosen`,
                           `.${a.values.name}.pathFollowed`);
+                //get rid of the path/pathindex?
             });
     });
 
