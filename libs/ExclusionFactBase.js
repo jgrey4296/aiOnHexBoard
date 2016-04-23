@@ -3,14 +3,17 @@ if(typeof define !== 'function'){
     var define = require('amdefine')(module);
 }
 
-define(['underscore'],function(_){
+define(['lodash'],function(_){
     "use strict";
 
     //token symbols. TODO
     let DOT = Symbol('DOT'),
         EX = Symbol('EX'),
         BIND = Symbol('BIND'),
-        NEG = Symbol('NEG');
+        NEG = Symbol('NEG'),
+        VALRETURN = Symbol('VALRETURN'),
+        ALT = Symbol('ALT');
+    
 
     /**
        Creates a fact repository / tree
@@ -34,7 +37,14 @@ define(['underscore'],function(_){
        @returns {Array.<String>} tokens
     */
     ExclusionFactBase.prototype.tokenize = function(str){
-        return str.replace(/^!!/g," $NOT$ ").replace(/%{(\w+)}/g," $BIND=$1$").replace(/\./g," $DOT$ ").replace(/!/g," $EX$ ").split(/ +/).slice(1);//spice off the first space
+        return str.replace(/^!!/g," $NOT$ ")
+            .replace(/%{(\w+)}/g," $BIND=$1$")
+            .replace(/\./g," $DOT$ ")
+            .replace(/!/g," $EX$ ")
+            .replace(/#/g," $VALRETURN$ ")
+            .replace(/\//g," $ALT$ ")
+            .split(/ +/)
+            .slice(1);//splice off the first space
     };
 
     /**
@@ -127,19 +137,16 @@ define(['underscore'],function(_){
         }else{
             strings = strings.shift();
         }
-
-        // if(!strings[0].match(/[\.!]/)){
-        //     throw new Error("String should start with a . or !");
-        // }
-
         
         //Single string:
         let tokens = this.tokenize(strings),
             current = this.root,
             negated = false,
+            shouldReturnValue = false,
+            successReturn = true,
+            failReturn = false,
             bindings = {},
             next;
-
         
         //peek the head to see if its a NOT:
         if(tokens[0] === "$NOT$"){
@@ -147,6 +154,22 @@ define(['underscore'],function(_){
             tokens.shift();
         }
 
+        //peek the tail for value return assignment:
+        if(tokens.length > 5){
+            let retStatement = tokens.splice(tokens.length-4);
+            if(_.head(retStatement).match(/\$VALRETURN\$/)){
+                failReturn = retStatement.pop();
+                if(!retStatement.pop().match(/\$ALT\$/)){
+                    throw new Error("incorrect ret statement format");
+                }
+                successReturn = retStatement.pop();
+                shouldReturnValue = true;
+            }else{
+                //isnt a ret statement, put it back
+                tokens = tokens.concat(retStatement);
+            }
+        }
+                
         while(tokens.length > 0){
             next = tokens.shift();
             if(next.match(/\$DOT\$/) && !current.exclusive){
@@ -187,10 +210,20 @@ define(['underscore'],function(_){
             }
         }
 
+
+        //Return based on negation and ret statement
         if(negated){
-            return !bindings;
+            if(shouldReturnValue){
+                return !bindings ? successReturn : failReturn;
+            }else{            
+                return !bindings;
+            }
         }else{
-            return bindings;
+            if(shouldReturnValue){
+                return bindings !== false ? successReturn : failReturn;
+            }else{
+                return bindings;
+            }
         }    
     };
 
