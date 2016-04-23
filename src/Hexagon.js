@@ -2,7 +2,7 @@
 /**
    Hexagon and pathfinding implemented from http://www.redblobgames.com/
  */
-define(['underscore','d3','util','PriorityQueue'],function(_,d3,util,PriorityQueue){
+define(['lodash','d3','util','PriorityQueue'],function(_,d3,util,PriorityQueue){
 
     
     //odd r offset
@@ -317,7 +317,7 @@ define(['underscore','d3','util','PriorityQueue'],function(_,d3,util,PriorityQue
        @returns {Array} of indices
      */
     Hexagon.prototype.pathFind = function(a,b){
-        console.log('Source:',a,'Target:',b);
+        //console.log('Source:',a,'Target:',b);
         if(this.positions[a] === undefined || this.positions[b] === undefined){
             throw new Error('invalid source or target');
         }

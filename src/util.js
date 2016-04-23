@@ -1,5 +1,5 @@
 /* jshint esversion : 6 */
-define(['underscore','d3'],function(_,d3){
+define(['lodash','d3'],function(_,d3){
     "use strict";
     var util = {};
 

@@ -6,7 +6,8 @@ require.config({
         underscore:"/libs/underscore-min",
         ExclusionFactBase: '/libs/ExclusionFactBase',
         BTree : '/libs/bTreeSimple',
-        PriorityQueue : '/libs/priorityQueue'
+        PriorityQueue : '/libs/priorityQueue',
+        lodash : '/libs/lodash'
     },
     shim:{
         underscore:{
@@ -15,7 +16,7 @@ require.config({
     }
 });
 
-require(['d3','underscore','ExclusionFactBase','BTree','Hexagon','BehaviourDefinitions','util'],function(d3,_,ExclusionFactBase,BTree,Hexagon,BModule,util){
+require(['d3','lodash','ExclusionFactBase','BTree','Hexagon','BehaviourDefinitions','util'],function(d3,_,ExclusionFactBase,BTree,Hexagon,BModule,util){
     "use strict";
     console.log('Hexagon AI Behaviour Tree Test');
     let height = 800,
@@ -76,6 +77,7 @@ require(['d3','underscore','ExclusionFactBase','BTree','Hexagon','BehaviourDefin
     }));
 
     //Set debug flags for bob:
+    //agents[0].setDebugFlags('binding');
     //agents[0].setDebugFlags('actions','update','cleanup','preConflictSet','postConflictSet','failure','facts');
     
     //Register the agents into the board:
@@ -103,7 +105,6 @@ require(['d3','underscore','ExclusionFactBase','BTree','Hexagon','BehaviourDefin
                 //update agents
                 agents.forEach(function(d){
                     d.update();
-                    console.log("\n\n");
                 });
                 hexBoard.draw();
                 canvas.fillText(`Turn : ${turn++}`,400,-25);
