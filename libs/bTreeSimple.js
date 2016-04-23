@@ -3,7 +3,7 @@ if(typeof define !== 'function'){
     var define = require('amdefine')(module);
 }
 
-define(['lodash','ExclusionFactBase','priorityQueue'],function(_,ExFB,PriorityQueue){
+define(['lodash','ExclusionFactBase','PriorityQueue'],function(_,ExFB,PriorityQueue){
     "use strict";
     var gid = 0,
         //Behaviour Types
