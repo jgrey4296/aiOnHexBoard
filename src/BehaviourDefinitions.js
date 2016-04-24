@@ -93,6 +93,7 @@ define(['lodash'],function(_){
                 a.retract(`.${a.values.name}.pathChosen`,
                           `.${a.values.name}.pathFollowed`);
                 //get rid of the path/pathindex?
+                console.log("colouring",currentPos,n.parent.bindings.x);
             });
     });
 
