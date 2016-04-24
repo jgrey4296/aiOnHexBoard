@@ -38,10 +38,10 @@ define(['lodash'],function(_){
     */
     ExclusionFactBase.prototype.tokenize = function(str){
         return str.replace(/^!!/g," $NOT$ ")
-            .replace(/%{(\w+)}/g," $BIND=$1$")
+            .replace(/%(\d+)?{(\w+)}/g," $BIND=$1=$2$")
             .replace(/\./g," $DOT$ ")
             .replace(/!/g," $EX$ ")
-            .replace(/#/g," $VALRETURN$ ")
+            .replace(/\^/g," $VALRETURN$ ")//todo: # intefers with colour. switch to ^
             .replace(/\//g," $ALT$ ")
             .split(/ +/)
             .slice(1);//splice off the first space
@@ -176,13 +176,16 @@ define(['lodash'],function(_){
                 next = tokens.shift();
                 if(next.match(/\$BIND=/)){
                     //if a bind....
-                    let bindName = next.match(/\$BIND=(\w+)\$/)[1],
-                        options = Array.from(current.keys());
-                    //todo:
-                    //convert each option to FB, and map search down,
-                    //filter for true values,
-                    //THEN sample
-                    bindings[bindName] = _.sample(options);
+                    let options = Array.from(current.keys()),
+                        bindParams = next.split(/=/),
+                        amt = bindParams[1] || options.length,
+                        bindName = bindParams[2].slice(0,bindParams[2].length-1);//remove the trailing $
+                    
+                    bindings[bindName] = amt > 1 ? _.sampleSize(options,amt) : _.sample(options);
+                    if(amt > 1 && tokens.length > 0){
+                        bindings = false;
+                        break;
+                    }
                     current = current.get(bindings[bindName]);
                 }else if(current.has(next)){
                     current = current.get(next);
@@ -194,8 +197,10 @@ define(['lodash'],function(_){
                 next = tokens.shift();
                 if(next.match(/\$BIND=/)){
                     //if a bind....
-                    let bindName = next.match(/\$BIND=(\w+)\$/)[1],
-                        options = Array.from(current.keys());
+                    let options = Array.from(current.keys()),
+                        bindParams = next.split(/=/),
+                        bindName = bindParams[2].slice(0,bindParams[2].length-1);//remove training $
+
                     bindings[bindName] = _.sample(options);
                     current = current.get(bindings[bindName]);
                 }else if(current.has(next) && current.size === 1){

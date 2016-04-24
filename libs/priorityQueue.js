@@ -15,7 +15,9 @@ define(['lodash'],function(_){
             this.comp = (a,b,i,j)=>a.p>b.p ? i : j;
         }else{
             this.comp = (a,b,i,j)=>a.p<b.p ? i : j;
-        }        
+        }
+        //to extract from objects a priority:
+        this.value = "value";
         //for heap[k] -> leftChild = heap[k*2], rightChild = heap[k*2+1], parent = heap[Math.floor(k/2)]
         this.heap = [0];
 
@@ -36,12 +38,14 @@ define(['lodash'],function(_){
        @param priority
      */
     PriorityQueue.prototype.insert = function(data,priority){
-        //default to elem as the priority if only one thing passed in
-        if(priority === undefined && !(typeof data === 'number' || typeof data === 'string')){
-            throw new Error('Unusable input types');
-        }
         if(priority === undefined){
-            priority = data;
+            if(data[this.value] !== undefined){            
+                priority = data[this.value];
+            }else if(!isNaN(data)){
+                priority = data;
+            }else{
+                throw new Error("cannot detect priority");
+            }
         }
         //add to the end:
         this.heap.push({
