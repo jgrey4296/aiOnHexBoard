@@ -75,6 +75,22 @@ require(['d3','lodash','ExclusionFactBase','BTree','Hexagon','BehaviourDefinitio
         board : hexBoard,
         movements : movements
     }));
+    agents.push(baseBTree.newCharacter({
+        name : "jill",
+        colour : "green",
+        q : 3,
+        r : 5,
+        board : hexBoard,
+        movements : movements
+    }));
+    agents.push(baseBTree.newCharacter({
+        name : "jim",
+        colour : "red",
+        q : 8,
+        r : 2,
+        board : hexBoard,
+        movements : movements
+    }));;
 
     //Set debug flags for bob:
     //agents[0].setDebugFlags('binding');
