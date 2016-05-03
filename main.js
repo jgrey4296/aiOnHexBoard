@@ -4,7 +4,7 @@ require.config({
     paths:{
         d3 : "/libs/d3.min",
         underscore:"/libs/underscore-min",
-        ExclusionFactBase: '/libs/ExclusionFactBase',
+        EL: '/libs/EL.min',
         BTree : '/libs/bTreeSimple',
         PriorityQueue : '/libs/priorityQueue',
         lodash : '/libs/lodash'
@@ -16,7 +16,7 @@ require.config({
     }
 });
 
-require(['d3','lodash','ExclusionFactBase','BTree','Hexagon','BehaviourDefinitions','util'],function(d3,_,ExclusionFactBase,BTree,Hexagon,BModule,util){
+require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],function(d3,_,ExclusionFactBase,BTree,Hexagon,BModule,util){
     "use strict";
     console.log('Hexagon AI Behaviour Tree Test');
     let height = 800,
@@ -124,6 +124,7 @@ require(['d3','lodash','ExclusionFactBase','BTree','Hexagon','BehaviourDefinitio
                 });
                 hexBoard.draw();
                 canvas.fillText(`Turn : ${turn++}`,400,-25);
+                //console.log('---------');
             }
         })
         .on('keyup',function(){
