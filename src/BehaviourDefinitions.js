@@ -22,8 +22,8 @@ define(['lodash'],function(_){
         bTree.Behaviour('genColour')
             .preference(5)
             .priority(2)
-            .entryCondition(a=>`!!.${a.values.name}.colour`)
-            .performAction(a=>a.assert(`.${a.values.name}.colour!${rndColour()}`));
+            .entryCondition(a=>`!!.${a.values.name}.colour?`)
+            .performAction(a=>a.fb.parse(`.${a.values.name}.colour!${rndColour()}`));
     });
 
     //fallback gencolour
@@ -36,7 +36,7 @@ define(['lodash'],function(_){
     BModule.push(function(bTree){
         bTree.Behaviour('move')
             .priority(1)
-            .entryCondition(d=>`.${d.values.name}.colour!%{x}`)
+            .entryCondition(d=>`.${d.values.name}.colour![1]->x?`)
             .performAction((ctx,n)=>{
                 let movement = _.sample(_.values(ctx.values.movements));
                 console.log(`Moving : ${movement}`);
@@ -50,8 +50,8 @@ define(['lodash'],function(_){
     BModule.push(function(bTree){
         bTree.Behaviour('moveToRandomTarget')
             .persistent(true)
-            .entryCondition(a=>`!!.${a.values.name}.pathChosen`,
-                            a=>`.${a.values.name}.colour!%{x}`)
+            .entryCondition(a=>`!!.${a.values.name}.pathChosen?`,
+                            a=>`.${a.values.name}.colour![1]->x?`)
             .subgoal('followPath');
     });
 
@@ -71,29 +71,29 @@ define(['lodash'],function(_){
                 a.values.path = a.values.board.pathFind(currentIndex,randomIndex);
                 //store it
                 a.values.pathIndex = 0;
-                a.assert(`.${a.values.name}.pathChosen`);
+                a.fb.parse(`.${a.values.name}.pathChosen`);
             })
         //PERSISTENCE:
             .persistent(true)
         //persistent until the path has finished
-            .persistCondition(a=>`!!.${a.values.name}.pathFollowed`,
-                              a=>`.${a.values.name}.pathChosen`)
+            .persistCondition(a=>`!!.${a.values.name}.pathFollowed?`,
+                              a=>`.${a.values.name}.pathChosen?`)
         //move along the path
             .performAction(a=>{
                 a.values.board.moveTo(a.id,a.values.path[a.values.pathIndex++]);
                 //Figure out when completed:
                 if(a.values.pathIndex >= a.values.path.length){
-                    a.assert(`.${a.values.name}.pathFollowed`);
+                    a.fb.parse(`.${a.values.name}.pathFollowed`);
                 }
             })
         //FINISH:
             .exitAction((a,n)=>{
                 let currentPos = a.values.board.offsetToIndex(a.values);
                 a.values.board.colour(currentPos,n.parent.bindings.x);
-                a.retract(`.${a.values.name}.pathChosen`,
-                          `.${a.values.name}.pathFollowed`);
+                a.fb.parse([`!!.${a.values.name}.pathChosen`,
+                          `!!.${a.values.name}.pathFollowed`]);
                 //get rid of the path/pathindex?
-                console.log("colouring",currentPos,n.parent.bindings.x);
+                //console.log("colouring",currentPos,n.parent.bindings.x);
             });
     });
 
