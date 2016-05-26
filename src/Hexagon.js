@@ -358,6 +358,19 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         return subPath;        
     };
 
+    Hexagon.prototype.getRing = function(i,radius){
+        let centre = this.indexToCube(i),
+            subCentre = centre.subtract(radius),
+            addCentre = centre.add(radius),
+            cubes = this.positions.map((d,i)=>this.indexToCube(i)),
+            xBounded = cubes.filter(d=>subCentre.x < d.x && d.x < addCentre.x),
+            yBounded = xBounded.filter(d=>subCentre.y < d.y && d.y < addCentre.y),
+            zBounded = yBounded.filter(d=>subCentre.z < d.z && d.z < addCentre.z);
+
+        console.log(subCentre,addCentre,centre);
+        return zBounded.map(d=>this.offsetToIndex(d.toOffset()));
+    };
+    
 
     Hexagon.prototype.getLine = function(i,direction){
         let directions = {

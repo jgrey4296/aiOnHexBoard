@@ -22,16 +22,15 @@ define([],function(){
     };
 
     Cube.prototype.add = function(x,y,z){
-        console.log('adding',x,y,z);
-        console.log('source',this);
         if(x instanceof Cube || (x.x !== undefined && x.y !== undefined && x.z !== undefined)){
             z = x.z;
             y = x.y;
             x = x.x;
+        }else if(typeof x == 'number'){
+            y = x;
+            z = x;          
         }
         let newCube = new Cube(this.x + x, this.y + y, this.z + z);
-        console.log('result',newCube);
-        console.log('\n');
         return newCube;
     };
 
@@ -56,6 +55,14 @@ define([],function(){
     };
 
     Cube.prototype.subtract = function(cube){
+        if(typeof cube == 'number'){
+            cube = {
+                x : cube,
+                y : cube,
+                z : cube
+            };
+        }
+        
         return new Cube(
             this.x - cube.x,
             this.y - cube.y,

@@ -45,7 +45,7 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
     //create the canvas:
     let canvas = drawCanvas("Hexagon AI Test"),
         //Then create the hexagon board:
-        hexBoard = new Hexagon(canvas,height,width,10,10),
+        hexBoard = new Hexagon(canvas,height,width,20,20),
         //Create the characters, place them on the board:
         baseBTree = new BTree(undefined,BModule),
         agents = [],
@@ -113,21 +113,29 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
 
     //shift detection:
     let shift = false,
-        line = true,
-        lineType = 'horizontal';
+        selectType = 'ring',
+        lineType = 'horizontal',
+        ringRadius = 1;
     
     d3.select('body')
         .on('keydown',function(){
             if(d3.event.key === 'Shift'){
                 shift = true;
-            }else if(d3.event.key === 'l'){
-                line = !line;
-            }else if(d3.event.key === 'h'){
+            }else if(d3.event.key === 'l'){//draw line, select type:
+                selectType = 'line';
+            }else if(d3.event.key === 'h'){//horizontal
                 lineType = 'horizontal';
-            }else if(d3.event.key === 't'){
+            }else if(d3.event.key === 't'){//vert 1
                 lineType = 'vertLeft';
-            }else if(d3.event.key === 'u'){
+            }else if(d3.event.key === 'u'){//vert 2
                 lineType = 'vertRight';
+            }else if(d3.event.key === 'p'){//pathfind
+                selectType = 'path';
+            }else if(d3.event.key === 'r'){//ring
+                selectType = 'ring';
+            }else if(!isNaN(Number(d3.event.key))){
+                //set the ring radius
+                ringRadius = Number(d3.event.key);
             }else{
                 //update agents
                 agents.forEach(function(d){
@@ -149,9 +157,11 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
         .on('mousedown',function(){
             if(shift){
                 addBlockade(d3.event,this);
-            }else if(line){
+            }else if(selectType === 'line'){
                 drawLine(d3.event,this);
-            }else{
+            }else if(selectType === 'ring'){
+                drawRing(d3.event,this);
+            }else if(selectType === 'path'){
                 pathFind(d3.event,this);
             }
             hexBoard.draw();            
@@ -198,7 +208,15 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
         hexBoard.positions[index].colour = 'purple';
         console.log('found line',theLine,index);
         theLine.forEach(d=>hexBoard.positions[d].colour = "purple");
-        
+    };
+
+    let drawRing = function(event,element){
+        let pos = util.screenToElementPosition(event,element),
+            index = hexBoard.screenToIndex(pos.x,pos.y),
+            theRing = hexBoard.getRing(index,ringRadius);
+        console.log(theRing);
+        hexBoard.positions[index].colour = "grey";
+        theRing.forEach(d=>hexBoard.positions[d].colour = "grey");
     };
     
     //-----
