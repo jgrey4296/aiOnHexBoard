@@ -257,14 +257,14 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
     };
     
     /**
-       Pathfind from a specified index node, to target index node
+       A* Pathfind from a specified index node, to target index node
        @param a as index
        @param b as index
        @returns {Array} of indices
      */
-    Hexagon.prototype.pathFind = function(a,b){
+    Hexagon.prototype.pathFind = function(source,target){
         //console.log('Source:',a,'Target:',b);
-        if(this.positions[a] === undefined || this.positions[b] === undefined){
+        if(this.positions[source] === undefined || this.positions[target] === undefined){
             throw new Error('invalid source or target');
         }
         let hRef = this,
@@ -275,7 +275,7 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
             current = null,
             reduceFunc = function(m,v){
                 let newCost = costs[current] + hRef.costOf(v),
-                    distance = hRef.distance(v,b);
+                    distance = hRef.distance(v,target);
                 if(m[v] === undefined || newCost < costs[v] ){
                     frontier.insert(v,newCost + distance);
                     costs[v] = newCost;
@@ -294,16 +294,16 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
             };
 
         //start point:
-        frontier.insert(a,0);
-        cameFrom[a] = null;
-        costs[a] = 0;
+        frontier.insert(source,0);
+        cameFrom[source] = null;
+        costs[source] = 0;
 
         //expand the frontier to the goal
         while(!frontier.empty()){
             current = frontier.next();
             //hRef.colour(current,"blue");
-            let distance = hRef.distance(current,b);
-            if(current === b || cameFrom[b] !== undefined){
+            let distance = hRef.distance(current,target);
+            if(current === target || cameFrom[target] !== undefined){
                 break;
             }
             let neighbourIndices = this.neighbours(current).filter(filterFunc);
@@ -311,10 +311,14 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         }        
         
         //walk back:
-        current = b;
+        current = target;
         while(current !== null && current !== undefined){
             path.unshift(current);
             current = cameFrom[current];
+        }
+
+        if(_.first(path) !== source){
+            return [];
         }
         //TODO: check that an empty path is returned for failure
         return path;

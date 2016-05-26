@@ -207,7 +207,7 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
             theLine = hexBoard.getLine(index,lineType);
         hexBoard.positions[index].colour = 'purple';
         console.log('found line',theLine,index);
-        theLine.forEach(d=>hexBoard.positions[d].colour = "purple");
+        theLine.forEach(d=>hexBoard.block(d,true));
     };
 
     let drawRing = function(event,element){
@@ -216,7 +216,7 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
             theRing = hexBoard.getRing(index,ringRadius);
         console.log(theRing);
         hexBoard.positions[index].colour = "grey";
-        theRing.forEach(d=>hexBoard.positions[d].colour = "grey");
+        theRing.forEach(d=>hexBoard.block(d,true));
     };
     
     //-----
