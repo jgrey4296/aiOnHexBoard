@@ -45,7 +45,7 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
     //create the canvas:
     let canvas = drawCanvas("Hexagon AI Test"),
         //Then create the hexagon board:
-        hexBoard = new Hexagon(canvas,height,width),
+        hexBoard = new Hexagon(canvas,height,width,10,10),
         //Create the characters, place them on the board:
         baseBTree = new BTree(undefined,BModule),
         agents = [],
@@ -61,7 +61,7 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
     //Creation of agents:
     agents.push(baseBTree.newCharacter({
         name : "bob",
-        colour : "red",
+        colour : "grey",
         q : 0,
         r : 0,
         board : hexBoard,
@@ -85,14 +85,14 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
     }));
     agents.push(baseBTree.newCharacter({
         name : "jim",
-        colour : "red",
+        colour : "yellow",
         q : 8,
         r : 2,
         board : hexBoard,
         movements : movements
     }));;
 
-    //Set debug flags for bob:
+    //set debug flags for bob:
     //agents[0].setDebugFlags('binding');
     //agents[0].setDebugFlags('actions','update','cleanup','preConflictSet','postConflictSet','failure','facts');
     
@@ -112,11 +112,22 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
 
 
     //shift detection:
-    let shift = false;
+    let shift = false,
+        line = true,
+        lineType = 'horizontal';
+    
     d3.select('body')
         .on('keydown',function(){
             if(d3.event.key === 'Shift'){
                 shift = true;
+            }else if(d3.event.key === 'l'){
+                line = !line;
+            }else if(d3.event.key === 'h'){
+                lineType = 'horizontal';
+            }else if(d3.event.key === 't'){
+                lineType = 'vertLeft';
+            }else if(d3.event.key === 'u'){
+                lineType = 'vertRight';
             }else{
                 //update agents
                 agents.forEach(function(d){
@@ -138,13 +149,15 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
         .on('mousedown',function(){
             if(shift){
                 addBlockade(d3.event,this);
+            }else if(line){
+                drawLine(d3.event,this);
             }else{
                 pathFind(d3.event,this);
             }
             hexBoard.draw();            
         });
 
-    var pathFind = function(event,element){
+    let pathFind = function(event,element){
             //convert the mouse click to a position in the canvas
         let pos = util.screenToElementPosition(event,element),
             //convert that to a board position
@@ -171,15 +184,22 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
         }
     };
     
-    var addBlockade = function(event,element){
+    let addBlockade = function(event,element){
         let mousePosition = d3.mouse(element),
             index = hexBoard.screenToIndex(mousePosition[0],mousePosition[1]);
         if(index === undefined) { return; }
-
         hexBoard.block(index);
-        
     };
 
+    let drawLine = function(event,element){
+        let pos = util.screenToElementPosition(event,element),
+            index = hexBoard.screenToIndex(pos.x,pos.y),
+            theLine = hexBoard.getLine(index,lineType);
+        hexBoard.positions[index].colour = 'purple';
+        console.log('found line',theLine,index);
+        theLine.forEach(d=>hexBoard.positions[d].colour = "purple");
+        
+    };
     
     //-----
     console.log(hexBoard);

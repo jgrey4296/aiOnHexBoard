@@ -22,17 +22,29 @@ define([],function(){
     };
 
     Cube.prototype.add = function(x,y,z){
-        if(x instanceof Cube || (x.x && x.y && x.z)){
+        console.log('adding',x,y,z);
+        console.log('source',this);
+        if(x instanceof Cube || (x.x !== undefined && x.y !== undefined && x.z !== undefined)){
             z = x.z;
             y = x.y;
             x = x.x;
         }
-        return new Cube(this.x + x, this.y + y, this.z = z);
+        let newCube = new Cube(this.x + x, this.y + y, this.z + z);
+        console.log('result',newCube);
+        console.log('\n');
+        return newCube;
     };
 
     Cube.prototype.toOffset = function(){
+        if(isNaN(this.x) || isNaN(this.z)){
+            console.log(this);
+            throw new Error('offsetting a NaN');
+        }
         let col = this.x + (this.z - (this.z%2)) / 2,
             row = this.z;
+        if(isNaN(col) || isNaN(row)){
+            throw new Error('produced a NaN');
+        }
         return { q : col, r : row };
     };
 

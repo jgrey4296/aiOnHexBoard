@@ -162,11 +162,9 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
             cube = this.offsetToCube(this.indexToOffset(index)),
             neighbours = cube.neighbours(),
             //get offset locations
-            n_offset = neighbours.map(d=>this.cubeToOffset(d)),
+            n_offset = neighbours.map(d=>d.toOffset()),
             //filter by out of bounds
-            n_offset_filtered = n_offset.filter(function(d){
-                return !(d.q < 0 || d.q >= columns || d.r < 0 || d.r >= rows);
-            }),
+            n_offset_filtered = n_offset.filter(d=>this.inBounds(d)),
             //convert to indices
             n_indices = n_offset_filtered.map(d=>this.offsetToIndex(d)),
             //filter by out of bounds
@@ -373,8 +371,9 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
             current = start.move(chosenDirectionPair[0]);
         //dir 1
         while(this.inBounds(current)){
-            foundCells.push(current);
-            current = current.move(chosenDirectionPair[0]);            
+            foundCells.unshift(current);
+            current = current.move(chosenDirectionPair[0]);
+            
         }
         //dir2
         current = start.move(chosenDirectionPair[1]);
@@ -392,7 +391,8 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         if(cube instanceof Cube){
             offset = cube.toOffset();
         }
-        return !(offset.q < 0 || offset.q >= this.columns || offset.r < 0 || offset.r >= this.rows);        
+        let inBounds = !(offset.q < 0 || offset.q >= this.columns || offset.r < 0 || offset.r >= this.rows);
+        return inBounds;
     };
 
 
