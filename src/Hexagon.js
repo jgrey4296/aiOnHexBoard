@@ -146,11 +146,7 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
     
     //offset -> cube
     Hexagon.prototype.offsetToCube = function(offset){
-        let x = offset.q - (offset.r - (offset.r%2)) /2,
-            z = offset.r,
-            y = -x-z;
-        
-        return new Cube(x,y,z);
+        return new Cube(offset.q, offset.r);
     };
 
     //cube -> offset

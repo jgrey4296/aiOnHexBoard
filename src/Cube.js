@@ -5,9 +5,18 @@ if(typeof define !== 'function'){
 define([],function(){
     "use strict";
     let Cube = function(x,y,z){
-        this.x = x;
-        this.y = y;
-        this.z = z;
+        if(z === undefined){
+            //passed in an offset
+            let q = x,
+                r = y;
+            this.x = Math.floor(q - (r - (r%2)) / 2);
+            this.z = r;
+            this.y = -this.x-this.z;
+        }else{
+            this.x = x;
+            this.y = y;
+            this.z = z;
+        }
     };
 
     Cube.prototype.add = function(x,y,z){
