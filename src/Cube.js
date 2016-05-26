@@ -13,6 +13,7 @@ define([],function(){
             this.z = r;
             this.y = -this.x-this.z;
         }else{
+            //normal cube construction
             this.x = x;
             this.y = y;
             this.z = z;
@@ -69,6 +70,39 @@ define([],function(){
         return fixed;
     };
 
+    Cube.prototype.neighbours = function(){
+        let directions = [
+                [1,-1,0],[1,0,-1],[0,1,-1],
+                [-1,1,0],[-1,0,1],[0,-1,1]
+        ],
+            neighbours = directions.map(d=>new Cube(this.x + d[0],
+                                                    this.y + d[1],
+                                                    this.z + d[2]));
+        
+    };
+
+    Cube.prototype.move = function(direction){
+        let deltas = {
+            upLeft:   { x : 0,  y : 1,  z : -1 },
+            upRight:  { x : 1,  y : 0,  z : -1 },
+            left:     { x : -1, y : 1,  z :  0 },
+            right:    { x : 1,  y : -1, z:   0 },
+            downLeft: { x : -1, y : 0,  z :  1 },
+            downRight:{ x : 0,  y : -1, z :  1 }
+        };
+        if(deltas[direction] === undefined){
+            throw new Error('unrecognised direction: ' + direction);
+        }
+        let delta = deltas[direction];
+        return this.add(delta.x,delta,y,delta.z);
+    };
+
+    Cube.prototype.distance = function(target){
+        let distance = ((Math.abs(this.x - target.x))
+                        + (Math.abs(this.y - target.y))
+                        + (Math.abs(this.z - target.z))) * 0.5;
+        return distance;
+    };
     
     
     return Cube;
