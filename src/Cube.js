@@ -1,3 +1,4 @@
+/* jshint esversion : 6 */
 if(typeof define !== 'function'){
     var define = require('amdefine')(module);
 }
@@ -9,7 +10,7 @@ define([],function(){
             //passed in an offset
             let q = x,
                 r = y;
-            this.x = Math.floor(q - (r - (r%2)) / 2);
+            this.x = q - (r - (r%2)) / 2;
             this.z = r;
             this.y = -this.x-this.z;
         }else{
@@ -21,7 +22,7 @@ define([],function(){
     };
 
     Cube.prototype.add = function(x,y,z){
-        if(x instanceof Cube){
+        if(x instanceof Cube || (x.x && x.y && x.z)){
             z = x.z;
             y = x.y;
             x = x.x;
@@ -30,14 +31,14 @@ define([],function(){
     };
 
     Cube.prototype.toOffset = function(){
-        let col = Math.floor(this.x + (this.z - (this.z%2)) / 2),
+        let col = this.x + (this.z - (this.z%2)) / 2,
             row = this.z;
         return { q : col, r : row };
     };
 
     Cube.prototype.round = function(){
         let rounded = new Cube(Math.round(this.x), Math.round(this.y), Math.round(this.z)),
-            delta = rounded.subtract(this),
+            delta = rounded.subtract(this).abs(),
             fixed = rounded.fixRoundError(delta);
         return fixed;
     };
@@ -78,7 +79,7 @@ define([],function(){
             neighbours = directions.map(d=>new Cube(this.x + d[0],
                                                     this.y + d[1],
                                                     this.z + d[2]));
-        
+        return neighbours;
     };
 
     Cube.prototype.move = function(direction){
@@ -94,7 +95,7 @@ define([],function(){
             throw new Error('unrecognised direction: ' + direction);
         }
         let delta = deltas[direction];
-        return this.add(delta.x,delta,y,delta.z);
+        return this.add(delta);
     };
 
     Cube.prototype.distance = function(target){

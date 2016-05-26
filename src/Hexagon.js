@@ -94,8 +94,8 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         screenY -= this.translationAmount.y;
         let q = (screenX * Math.sqrt(3)/3 - screenY/3) / this.radius,
             r = screenY * 2/3 / this.radius,
-            rounded = this.round({x : q, y : -q-r, z : r});
-
+            cube = new Cube(q,-q-r,r),
+            rounded = cube.round();
         try{
             return this.offsetToIndex(this.cubeToOffset(rounded));
         }catch(error){
@@ -103,11 +103,6 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         }
     };
 
-
-    Hexagon.prototype.round = function(cube){
-        return cube.round();
-    };
-    
     //index -> screen position
     Hexagon.prototype.indexToScreen = function(index,radius){
         let offset = this.indexToOffset(index), //location
@@ -123,14 +118,14 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
     };
 
     //index -> cube
-    Hexagon.prototype.indexToCube = function(offset){
-        return this.offsetToCube(this.indexToOffset(offset));
+    Hexagon.prototype.indexToCube = function(index){
+        return this.offsetToCube(this.indexToOffset(index));
     };
     
     
     //offset -> index
     Hexagon.prototype.offsetToIndex = function(offset){
-        if(offset.q < 0 || offset.q > this.columns || offset.r < 0 || offset.r > this.rows){
+        if(!this.inBounds(offset)){
             throw new Error('out of bounds');
         }
         return (offset.q) + (offset.r * this.columns);
@@ -368,23 +363,43 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
 
     Hexagon.prototype.getLine = function(i,direction){
         let directions = {
-            horizontal : [{ x : 1 , y : -1, z : 0 }, { x : -1, y : 1, z : 0}],
-            vertLeft : [{x : 0, y : 1, z : -1},{x : 0, y : -1, z : 1}],
-            vertRight : [{x : 1, y : 0, z : -1},{x: -1, y : 0, z : 1}]
+            horizontal : ['left','right'],
+            vertLeft : ['upLeft','downRight'],
+            vertRight : ['upRight','downLeft'],
         },
+            chosenDirectionPair = directions[direction],
             start = this.indexToCube(i),
-            foundCells = [];
-
-        let current = this.positions[i],
-            currentPosition = start;
-        while(current !== undefined){
+            foundCells = [start],
+            current = start.move(chosenDirectionPair[0]);
+        //dir 1
+        while(this.inBounds(current)){
             foundCells.push(current);
-            
+            current = current.move(chosenDirectionPair[0]);            
+        }
+        //dir2
+        current = start.move(chosenDirectionPair[1]);
+        while(this.inBounds(current)){
+            foundCells.push(current);
+            current = current.move(chosenDirectionPair[1]);
         }
 
-        
+        return foundCells.map(d=>this.offsetToIndex(d.toOffset()));
     };
-    
+
+    //return bool
+    Hexagon.prototype.inBounds = function(cube){
+        let offset = cube;
+        if(cube instanceof Cube){
+            offset = cube.toOffset();
+        }
+        return !(offset.q < 0 || offset.q >= this.columns || offset.r < 0 || offset.r >= this.rows);        
+    };
+
+
+    Hexagon.prototype.toCubes = function(){
+        let cubeArray = this.positions.map((d,i)=>this.indexToOffset(i));
+        return cubeArray;
+    };
 
     //----------------------------------------
     //simple utilities
