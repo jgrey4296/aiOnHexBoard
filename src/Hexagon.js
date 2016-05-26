@@ -2,7 +2,7 @@
 /**
    Hexagon and pathfinding implemented from http://www.redblobgames.com/
  */
-define(['lodash','d3','util','PriorityQueue'],function(_,d3,util,PriorityQueue){
+define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,PriorityQueue,Cube){
 
     
     //odd r offset
@@ -10,12 +10,13 @@ define(['lodash','d3','util','PriorityQueue'],function(_,d3,util,PriorityQueue){
         this.centre = [width*0.5,height*0.5];
         this.boardWidth = width;
         this.boardHeight = height;
-        //Hex Dimensions:
-        this.radius = 20;
-        this.hexHeight = (2 * this.radius);
         //Board Dimensions:
         this.columns = columns || 20; //q
         this.rows = rows || 15; //r
+        //Hex Dimensions:
+        //todo: use max of width/columns vs height/rows
+        this.radius =  Math.floor(width / columns*0.5) || 20;
+        this.hexHeight = (2 * this.radius);
         //store each individual board element:
         this.positions = Array(this.columns*this.rows).fill(0).map(function(d){
             return {colour : "black", agents : {}};
@@ -32,6 +33,9 @@ define(['lodash','d3','util','PriorityQueue'],function(_,d3,util,PriorityQueue){
         ctx.translate(this.translationAmount.x,this.translationAmount.y);
         //Record all registered agents used in this hexboard
         this.agents = {};
+
+        //Generate a map:
+        //this.genMap();
     };
 
     //place an agent into a board position
@@ -66,12 +70,14 @@ define(['lodash','d3','util','PriorityQueue'],function(_,d3,util,PriorityQueue){
     };
     
 
-    Hexagon.prototype.block = function(index){
+    //flip flopping
+    Hexagon.prototype.block = function(index, force){
         if(this.positions[index] === undefined){
+            console.log(index);
             throw new Error('invalid position');
         }
         let position = this.positions[index];
-        if(position.blocked !== true){
+        if(position.blocked !== true || force === true){
             position.colour = "red";
             position.blocked = true;
         }else{
@@ -99,23 +105,7 @@ define(['lodash','d3','util','PriorityQueue'],function(_,d3,util,PriorityQueue){
 
 
     Hexagon.prototype.round = function(cube){
-        let rx = Math.round(cube.x),
-            ry = Math.round(cube.y),
-            rz = Math.round(cube.z),
-            //differences:
-            xd = Math.abs(rx - cube.x),
-            yd = Math.abs(ry - cube.y),
-            zd = Math.abs(rz - cube.z);
-        //correct the error:
-        if(xd > yd && xd > zd){
-            rx = -ry-rz;
-        }else if(yd > zd){
-            ry = -rx-rz;
-        }else{
-            rz = -rx-ry;
-        }
-        //Return the cube position:
-        return { x : rx, y : ry, z : rz };
+        return cube.round();
     };
     
     //index -> screen position
@@ -160,18 +150,12 @@ define(['lodash','d3','util','PriorityQueue'],function(_,d3,util,PriorityQueue){
             z = offset.r,
             y = -x-z;
         
-        return {
-            x: x,
-            y: y,
-            z: z
-        };
+        return new Cube(x,y,z);
     };
 
     //cube -> offset
     Hexagon.prototype.cubeToOffset = function(cube){
-        let col = cube.x + (cube.z - (cube.z%2)) /2,
-            row = cube.z;
-        return { q : col, r : row };
+        return cube.toOffset();
     };
 
     /**
@@ -309,7 +293,6 @@ define(['lodash','d3','util','PriorityQueue'],function(_,d3,util,PriorityQueue){
         }        
     };
     
-
     /**
        Pathfind from a specified index node, to target index node
        @param a as index
@@ -370,9 +353,67 @@ define(['lodash','d3','util','PriorityQueue'],function(_,d3,util,PriorityQueue){
             path.unshift(current);
             current = cameFrom[current];
         }
+        //TODO: check that an empty path is returned for failure
         return path;
     };
 
+
+    Hexagon.prototype.genMap = function(){
+        //block some random points:
+        //_.sampleSize(this.positions.map((d,i)=>i),Math.floor(this.positions.length*0.2)).forEach(d=>this.block(d));        
+        //pathfind from between two random points
+        let randPoints = _.sampleSize(this.positions.map((d,i)=>i),2),
+            pathIndices = this.pathFind(randPoints[0],randPoints[1]),
+            breakPointIndices = _.sampleSize(pathIndices,Math.floor(pathIndices.length*0.2)),
+            //pick points on that path and random walk along
+            subPaths = breakPointIndices.map(d=>this.randomWalk(d)),
+            //combine them all together:
+            combinedIndices = subPaths.reduce((m,v)=>{
+                return m.concat(v);
+            },pathIndices),
+            indicesSet = new Set(combinedIndices);
+
+        console.log(randPoints,pathIndices,subPaths);
+        
+        pathIndices.forEach(d=>this.positions[d].colour = "grey");
+        subPaths.forEach(d=>d.forEach(e=>this.positions[e].colour = "orange"));
+        breakPointIndices.forEach(d=>this.positions[d].colour = "yellow");
+        randPoints.forEach(d=>this.positions[d].colour = "purple");
+        
+    };
+
+    //Take a random walk from the startpoint
+    Hexagon.prototype.randomWalk = function(startPoint){
+        let len = Math.floor(2 + Math.random() * 10),
+            subPath = [startPoint];
+        for(let i = 0; i < len; i++){
+            let neighbourIndices = this.neighbours(_.last(subPath)),
+                neighbours = _.reject(neighbourIndices.map(d=>[d,this.positions[d]]),d=>d[1].blocked === true);
+            subPath.push(_.sample(neighbours)[0]);            
+        }
+        return subPath;        
+    };
+
+
+    Hexagon.prototype.getLine = function(i,direction){
+        let directions = {
+            horizontal : [{ x : 1 , y : -1, z : 0 }, { x : -1, y : 1, z : 0}],
+            vertLeft : [{x : 0, y : 1, z : -1},{x : 0, y : -1, z : 1}],
+            vertRight : [{x : 1, y : 0, z : -1},{x: -1, y : 0, z : 1}]
+        },
+            start = this.indexToCube(i),
+            foundCells = [];
+
+        let current = this.positions[i],
+            currentPosition = start;
+        while(current !== undefined){
+            foundCells.push(current);
+            
+        }
+
+        
+    };
+    
 
     //----------------------------------------
     //simple utilities
