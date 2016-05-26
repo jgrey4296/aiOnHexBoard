@@ -165,17 +165,7 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
             rows = this.rows,
             columns = this.columns,
             cube = this.offsetToCube(this.indexToOffset(index)),
-            directions = [
-                [1,-1,0],[1,0,-1],[0,1,-1],
-                [-1,1,0],[-1,0,1],[0,-1,1]
-            ],
-            neighbours = directions.map(function(d){
-                return {
-                    x: cube.x + d[0],
-                    y: cube.y + d[1],
-                    z: cube.z + d[2]
-                };
-            }),
+            neighbours = cube.neighbours(),
             //get offset locations
             n_offset = neighbours.map(d=>this.cubeToOffset(d)),
             //filter by out of bounds
@@ -223,28 +213,12 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         if(agent === undefined){
             throw new Error("Unrecognised agent");
         }
-        let moveDeltas = {
-            upLeft:   { x : 0,  y : 1,  z : -1 },
-            upRight:  { x : 1,  y : 0,  z : -1 },
-            left:     { x : -1, y : 1,  z :  0 },
-            right:    { x : 1,  y : -1, z:   0 },
-            downLeft: { x : -1, y : 0,  z :  1 },
-            downRight:{ x : 0,  y : -1, z :  1 }
-        },
-            agentOffset = agent.values,
+        let agentOffset = agent.values,
             oldIndex = this.offsetToIndex(agentOffset),
-            cube = this.offsetToCube(agentOffset);
-
-        if(moveDeltas[direction] === undefined){
-            throw new Error("Unrecognised direction:",direction);
-        }
-        let delta = moveDeltas[direction];
-        cube.x += delta.x;
-        cube.y += delta.y;
-        cube.z += delta.z;
-
-        //update the agent's offset:
-        let newOffset = this.cubeToOffset(cube),
+            cube = this.offsetToCube(agentOffset),
+            moved = cube.move(direction),
+            //update the agent's offset:
+            newOffset = moved.toOffset(),
             newIndex = this.offsetToIndex(newOffset);
         if(this.positions[newIndex] === undefined){
             return;
@@ -271,7 +245,7 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
             b = this.offsetToCube(b);
         }
         
-        return (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) + Math.abs(a.z - b.z)) * 0.5;
+        return a.distance(b);
     };
 
     /**
@@ -370,7 +344,8 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
             indicesSet = new Set(combinedIndices);
 
         console.log(randPoints,pathIndices,subPaths);
-        
+
+        //colour the steps
         pathIndices.forEach(d=>this.positions[d].colour = "grey");
         subPaths.forEach(d=>d.forEach(e=>this.positions[e].colour = "orange"));
         breakPointIndices.forEach(d=>this.positions[d].colour = "yellow");
@@ -421,12 +396,8 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
     }
 
     function isCube(pCube){
-        if(pCube.x && pCube.y && pCube.z){
-            return true;
-        }
-        return false;
+        return pCube instanceof Cube;
     }
-
     
     return Hexagon;
 });
