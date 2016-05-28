@@ -19,16 +19,48 @@ require.config({
 require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],function(d3,_,ExclusionFactBase,BTree,Hexagon,BModule,util){
     "use strict";
     console.log('Hexagon AI Behaviour Tree Test');
-    let height = 800,
-        width = 800,
-        movements = {
-            "q" : "upLeft",
-            "e" : "upRight",
-            "a" : "left",
-            "d" : "right",
-            "z" : "downLeft",
-            "c" : "downRight"
-        };
+    const height = 800,
+          width = 800,
+          BOARDX_SIZE = 25,
+          BOARDY_SIZE = 25,
+          movements = {
+              "q" : "upLeft",
+              "e" : "upRight",
+              "a" : "left",
+              "d" : "right",
+              "z" : "downLeft",
+              "c" : "downRight"
+          };
+
+    //variables to control the display:
+    let shift = false,
+        selectType = 'ring',
+        lineType = 'horizontal',
+        ringRadius = 1;
+
+    //command object for lookup
+    let commands = {
+        Shift : ()=>shift = true,
+        l : ()=>selectType = 'line',
+        h : ()=>lineType = 'horizontal',
+        t : ()=>lineType = 'vertLeft',
+        u : ()=>lineType = 'vertRight',
+        p : ()=>selectType = 'path',
+        r : ()=>selectType = 'ring',
+        number : n=>ringRadius = n,
+        click : function(event,container){
+            if(shift){
+                addBlockade(event,container);
+            }else if(selectType === 'line'){
+                drawLine(event,container);
+            }else if(selectType === 'ring'){
+                drawRing(event,container);
+            }else if(selectType === 'path'){
+                pathFind(event,container);
+            }
+        },
+    };
+
     
     //Create a Canvas helper function:
     function drawCanvas(name,before){
@@ -45,8 +77,8 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
     //create the canvas:
     let canvas = drawCanvas("Hexagon AI Test"),
         //Then create the hexagon board:
-        hexBoard = new Hexagon(canvas,height,width,20,20),
-        //Create the characters, place them on the board:
+        hexBoard = new Hexagon(canvas,height,width,BOARDX_SIZE,BOARDY_SIZE),
+        //Create the base agent:
         baseBTree = new BTree(undefined,BModule),
         agents = [],
         //the current turn:
@@ -111,31 +143,13 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
     // },500);
 
 
-    //shift detection:
-    let shift = false,
-        selectType = 'ring',
-        lineType = 'horizontal',
-        ringRadius = 1;
     
     d3.select('body')
         .on('keydown',function(){
-            if(d3.event.key === 'Shift'){
-                shift = true;
-            }else if(d3.event.key === 'l'){//draw line, select type:
-                selectType = 'line';
-            }else if(d3.event.key === 'h'){//horizontal
-                lineType = 'horizontal';
-            }else if(d3.event.key === 't'){//vert 1
-                lineType = 'vertLeft';
-            }else if(d3.event.key === 'u'){//vert 2
-                lineType = 'vertRight';
-            }else if(d3.event.key === 'p'){//pathfind
-                selectType = 'path';
-            }else if(d3.event.key === 'r'){//ring
-                selectType = 'ring';
+            if(commands[d3.event.key] !== undefined){
+                commands[d3.event.key]();
             }else if(!isNaN(Number(d3.event.key))){
-                //set the ring radius
-                ringRadius = Number(d3.event.key);
+                commands.number(Number(d3.event.key));
             }else{
                 //update agents
                 agents.forEach(function(d){
@@ -143,10 +157,10 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
                 });
                 hexBoard.draw();
                 canvas.fillText(`Turn : ${turn++}`,400,-25);
-                //console.log('---------');
             }
         })
         .on('keyup',function(){
+            //special case
             if(d3.event.key === 'Shift'){
                 shift = false;
             }
@@ -155,18 +169,15 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
     //Click based selection/pathfinding:
     d3.select('canvas')
         .on('mousedown',function(){
-            if(shift){
-                addBlockade(d3.event,this);
-            }else if(selectType === 'line'){
-                drawLine(d3.event,this);
-            }else if(selectType === 'ring'){
-                drawRing(d3.event,this);
-            }else if(selectType === 'path'){
-                pathFind(d3.event,this);
-            }
+            commands.click(d3.event,this);
             hexBoard.draw();            
         });
 
+
+
+    /**
+       Pathfind. using the last two positions specified, run A* on them
+     */    
     let pathFind = function(event,element){
             //convert the mouse click to a position in the canvas
         let pos = util.screenToElementPosition(event,element),
@@ -193,7 +204,8 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
             path.forEach(d=>hexBoard.positions[d].colour = colour);
         }
     };
-    
+
+    //Convert a cell to be blocked for pathfinding
     let addBlockade = function(event,element){
         let mousePosition = d3.mouse(element),
             index = hexBoard.screenToIndex(mousePosition[0],mousePosition[1]);
@@ -201,6 +213,7 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
         hexBoard.block(index);
     };
 
+    //Find a draw a line of cells 
     let drawLine = function(event,element){
         let pos = util.screenToElementPosition(event,element),
             index = hexBoard.screenToIndex(pos.x,pos.y),
@@ -210,11 +223,11 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
         theLine.forEach(d=>hexBoard.block(d,true));
     };
 
+    //Get an area of the board
     let drawRing = function(event,element){
         let pos = util.screenToElementPosition(event,element),
             index = hexBoard.screenToIndex(pos.x,pos.y),
             theRing = hexBoard.getRing(index,ringRadius);
-        console.log(theRing);
         hexBoard.positions[index].colour = "grey";
         theRing.forEach(d=>hexBoard.block(d,true));
     };
