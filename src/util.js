@@ -59,10 +59,12 @@ define(['lodash','d3'],function(_,d3){
             totalOffsetY = 0,
             canvasX = 0,
             canvasY = 0;
+        //go up the parent chain, repeatedly offsetting
         do{
             totalOffsetX += element.offsetLeft - element.scrollLeft;
             totalOffsetY += element.offsetTop - element.scrollTop;
-        }while(element = element.offsetParent);
+            element = element.offsetParent;
+        }while(element);
 
         canvasX = event.clientX - totalOffsetX;
         canvasY = event.clientY - totalOffsetY;

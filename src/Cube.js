@@ -5,6 +5,9 @@ if(typeof define !== 'function'){
 
 define([],function(){
     "use strict";
+    /**
+       A 3-d cube representation for use in the hexagon board.
+     */
     let Cube = function(x,y,z){
         if(z === undefined){
             //passed in an offset
@@ -21,19 +24,43 @@ define([],function(){
         }
     };
 
+    //Scale a cube coordiate
+    Cube.prototype.scale = function(v){
+        return new Cube(this.x * v, this.y * v, this.z * v);
+    };
+
+    
+    //Add two cubes together, either as separate coords,
+    //or as one arg
     Cube.prototype.add = function(x,y,z){
+        //passed in a cube or something that looks like one
         if(x instanceof Cube || (x.x !== undefined && x.y !== undefined && x.z !== undefined)){
             z = x.z;
             y = x.y;
             x = x.x;
-        }else if(typeof x == 'number'){
+        }else if(typeof x == 'number' && y === undefined && z === undefined){
             y = x;
             z = x;          
         }
-        let newCube = new Cube(this.x + x, this.y + y, this.z + z);
-        return newCube;
+        return new Cube(this.x + x, this.y + y, this.z + z);
     };
 
+    //Subtract a cube
+    Cube.prototype.subtract = function(x,y,z){
+        //passed in a cube or something that looks like one
+        if(x instanceof Cube || (x.x !== undefined && x.y !== undefined && x.z !== undefined)){
+            z = x.z;
+            y = x.y;
+            x = x.x;
+        }else if(typeof x == 'number' && y === undefined && z === undefined){
+            z = x;
+            y = x;
+        }
+        return new Cube(this.x - x,this.y - y,this.z - z);
+    };
+
+    
+    //Return the offset representation of the cube
     Cube.prototype.toOffset = function(){
         if(isNaN(this.x) || isNaN(this.z)){
             console.log(this);
@@ -47,6 +74,7 @@ define([],function(){
         return { q : col, r : row };
     };
 
+    //Round the cube coordinates
     Cube.prototype.round = function(){
         let rounded = new Cube(Math.round(this.x), Math.round(this.y), Math.round(this.z)),
             delta = rounded.subtract(this).abs(),
@@ -54,22 +82,7 @@ define([],function(){
         return fixed;
     };
 
-    Cube.prototype.subtract = function(cube){
-        if(typeof cube == 'number'){
-            cube = {
-                x : cube,
-                y : cube,
-                z : cube
-            };
-        }
-        
-        return new Cube(
-            this.x - cube.x,
-            this.y - cube.y,
-            this.z - cube.z
-        );
-    };
-
+    //Get the absolute values of a cube
     Cube.prototype.abs = function(){
         return new Cube(
             Math.abs(this.x),
@@ -78,6 +91,7 @@ define([],function(){
         );
     };
 
+    //Recalculate one of the params to ensure x + y + z = 0;
     Cube.prototype.fixRoundError = function(delta){
         let fixed = new Cube(this.x,this.y,this.z);
         if(delta.x > delta.y && delta.x > delta.z){
@@ -90,6 +104,8 @@ define([],function(){
         return fixed;
     };
 
+    //Get the Logical (not actual) neighbours of a cube
+    //needs filtering in hexagon to remove non-existing positions
     Cube.prototype.neighbours = function(){
         let directions = [
                 [1,-1,0],[1,0,-1],[0,1,-1],
@@ -101,6 +117,7 @@ define([],function(){
         return neighbours;
     };
 
+    //Given a direction, return cube coords for a cube moved in that direction
     Cube.prototype.move = function(direction){
         let deltas = {
             upLeft:   { x : 0,  y : 1,  z : -1 },
@@ -117,10 +134,13 @@ define([],function(){
         return this.add(delta);
     };
 
+    //Calculate the distance between two cubes
     Cube.prototype.distance = function(target){
-        let distance = ((Math.abs(this.x - target.x))
-                        + (Math.abs(this.y - target.y))
-                        + (Math.abs(this.z - target.z))) * 0.5;
+        let subAbs = this.subtract(target).abs(),
+            distance = Math.floor((subAbs.x + subAbs.y + subAbs.z) * 0.5);
+        // let distance = ((Math.abs(this.x - target.x)) +
+        //                 (Math.abs(this.y - target.y)) +
+        //                 (Math.abs(this.z - target.z))) * 0.5;
         return distance;
     };
     

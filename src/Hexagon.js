@@ -3,27 +3,16 @@
    Hexagon and pathfinding implemented from http://www.redblobgames.com/
  */
 define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,PriorityQueue,Cube){
-
-    
-    //odd r offset
-    var Hexagon = function(ctx,height,width,columns,rows){
-        this.centre = [width*0.5,height*0.5];
-        this.boardWidth = width;
-        this.boardHeight = height;
-        //Board Dimensions:
-        this.columns = columns || 20; //q
-        this.rows = rows || 15; //r
-        //Hex Dimensions:
-        //todo: use max of width/columns vs height/rows
-        this.radius =  Math.floor(width / columns*0.5) || 20;
-        this.hexHeight = (2 * this.radius);
-        //store each individual board element:
-        this.positions = Array(this.columns*this.rows).fill(0).map(function(d){
-            return {colour : "black", agents : {}};
-        });
-        this.count = 0;
-        //Current position:
-        this.curIndex = this.offsetToIndex({q:0,r:0});
+    "use strict";
+    /**
+       A Hexagon board representation. uses an ODD R OFFSET REPRESENTATION
+       @param ctx The canvas context to draw to
+       @param heigh Screen height
+       @param width Screen Width
+       @param columns The number of cell columns on the board
+       @param rows The number of cell rows on the board
+    */
+    let Hexagon = function(ctx,height,width,columns,rows){
         //Offset the drawn board
         this.ctx = ctx;
         this.translationAmount = {
@@ -31,14 +20,32 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
             y : 50
         };
         ctx.translate(this.translationAmount.x,this.translationAmount.y);
+        this.boardWidth = width - (this.translationAmount.x * 2);
+        this.boardHeight = height - (this.translationAmount.y * 2);
+        this.centre = [Math.floor(this.boardWidth*0.5),Math.floor(this.boardHeight*0.5)];
+        //Board Dimensions:
+        this.columns = columns || 20; //q
+        this.rows = rows || 15; //r
+        //Hex Dimensions:
+        let cellWidth = width / columns*0.5,
+            cellHeight = height / rows*0.5;
+        this.radius =  Math.floor(Math.max(cellWidth,cellHeight)) || 20;
+        this.hexHeight = (2 * this.radius);
+        //INDIVIDUAL CELLS:
+        this.positions = Array(this.columns*this.rows).fill(0).map(function(d,i){
+            return {index : i, colour : "black", agents : {}};
+        });
+        //Current position:
+        this.curIndex = this.offsetToIndex({q:0,r:0});
         //Record all registered agents used in this hexboard
         this.agents = {};
-
+        //--------------------
+        //Test Setups:
         //Generate a map:
-        //this.genMap();
+        this.genMap();
     };
 
-    //place an agent into a board position
+    //place an array of agents into a board position
     Hexagon.prototype.register = function(agents){
         agents.forEach(function(d){
             let index = this.offsetToIndex(d.values);
@@ -61,6 +68,9 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         },this);
     };
 
+    /**
+       set a cell's colour
+     */
     Hexagon.prototype.colour = function(index,colour){
         if(this.positions[index] === undefined){
             throw new Error('invalid position');
@@ -70,11 +80,15 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
     };
     
 
-    //flip flopping
+    /**
+       flip flop the block tag of a cell
+       @param index
+       @param force - will force to blocked, short circuiting the flip flop
+    */
     Hexagon.prototype.block = function(index, force){
         if(this.positions[index] === undefined){
             console.log(index);
-            throw new Error('invalid position');
+            throw new Error('invalid position specified to block');
         }
         let position = this.positions[index];
         if(position.blocked !== true || force === true){
@@ -89,6 +103,8 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
     
     //------------------------------
     //Utilities:
+
+    //Convert screen coordinates to a position on the board
     Hexagon.prototype.screenToIndex = function(screenX,screenY){
         screenX -= this.translationAmount.x;
         screenY -= this.translationAmount.y;
@@ -173,6 +189,10 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         return n_indices_filtered;
     };
 
+    /**
+       Move an agent, by id, to the specified cell/tile
+       Removes the agent from it's prior tile
+    */
     Hexagon.prototype.moveTo = function(agentId,targetTile){
         let agent = this.agents[agentId];
         if(agent === undefined){
@@ -181,25 +201,26 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         let agentOffset = agent.values,
             oldIndex = this.offsetToIndex(agentOffset),
             newIndex = targetTile,
+            //CRUCIAL LINE:
             newOffset = this.indexToOffset(targetTile);
         
         if(this.positions[newIndex] === undefined){
             return;
         }
-        
+
+        //update the agent's own location store
         agent.values.q = newOffset.q;
         agent.values.r = newOffset.r;
         //remove from the old position
         delete this.positions[oldIndex].agents[agentId];
         //add to the new position:
         this.positions[newIndex].agents[agentId] = agent;
-   
     };
 
     
     /**
        Move the specified agent (by id), from its current position,
-       to a new position
+       to a new position, BY DIRECTION
      */    
     Hexagon.prototype.move = function(agentId,direction){
         let agent = this.agents[agentId];
@@ -209,6 +230,7 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         let agentOffset = agent.values,
             oldIndex = this.offsetToIndex(agentOffset),
             cube = this.offsetToCube(agentOffset),
+            //CRUCIAL LINE:
             moved = cube.move(direction),
             //update the agent's offset:
             newOffset = moved.toOffset(),
@@ -218,14 +240,17 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         }
         agent.values.q = newOffset.q;
         agent.values.r = newOffset.r;
-
         //remove from the old position
         delete this.positions[oldIndex].agents[agentId];
         //add to the new position:
         this.positions[newIndex].agents[agentId] = agent;
     };
 
-    //Hex based distance
+    /**
+       Hex based distance, between two points
+       ACCEPTS indices / offsets / cubes
+       (upscales to cubes internally)
+    */
     Hexagon.prototype.distance = function(a,b){
         if(typeof a === 'number'){
             a = this.indexToCube(a);
@@ -263,16 +288,16 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
        @returns {Array} of indices
      */
     Hexagon.prototype.pathFind = function(source,target){
-        //console.log('Source:',a,'Target:',b);
         if(this.positions[source] === undefined || this.positions[target] === undefined){
             throw new Error('invalid source or target');
         }
         let hRef = this,
             frontier = new PriorityQueue(),//minimising
-            cameFrom = {},
-            costs = {},
-            path = [],
+            cameFrom = {},//history of best moves
+            costs = {},//record of costs
+            path = [],//the generated path
             current = null,
+            //calculate cost and add to potential nodes, update frontier
             reduceFunc = function(m,v){
                 let newCost = costs[current] + hRef.costOf(v),
                     distance = hRef.distance(v,target);
@@ -284,6 +309,7 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
                 }
                 return m;
             },
+            //filter out invalid potential neighbours
             filterFunc = function(d){
                 let position = hRef.positions[d];
                 if(position !== undefined && position.blocked !== true){
@@ -298,6 +324,7 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         cameFrom[source] = null;
         costs[source] = 0;
 
+        //MAIN LOOP:
         //expand the frontier to the goal
         while(!frontier.empty()){
             current = frontier.next();
@@ -310,27 +337,29 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
             cameFrom = neighbourIndices.reduce(reduceFunc,cameFrom);
         }        
         
-        //walk back:
+        //Retrace steps from target to source to construct path
         current = target;
         while(current !== null && current !== undefined){
             path.unshift(current);
             current = cameFrom[current];
         }
 
+        //if path doesnt start with the source, pathfinding failed
         if(_.first(path) !== source){
             return [];
         }
-        //TODO: check that an empty path is returned for failure
+        //return the successful path:
         return path;
     };
 
 
+    /**
+       Generate a map from a random path, with some random walks off that path
+     */
     Hexagon.prototype.genMap = function(){
-        //block some random points:
-        //_.sampleSize(this.positions.map((d,i)=>i),Math.floor(this.positions.length*0.2)).forEach(d=>this.block(d));        
         //pathfind from between two random points
-        let randPoints = _.sampleSize(this.positions.map((d,i)=>i),2),
-            pathIndices = this.pathFind(randPoints[0],randPoints[1]),
+        let randPoints = _.sampleSize(this.positions,2),
+            pathIndices = this.pathFind(randPoints[0].index,randPoints[1].index),
             breakPointIndices = _.sampleSize(pathIndices,Math.floor(pathIndices.length*0.2)),
             //pick points on that path and random walk along
             subPaths = breakPointIndices.map(d=>this.randomWalk(d)),
@@ -339,15 +368,12 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
                 return m.concat(v);
             },pathIndices),
             indicesSet = new Set(combinedIndices);
-
-        console.log(randPoints,pathIndices,subPaths);
-
+        //---------- DEBUG: 
         //colour the steps
         pathIndices.forEach(d=>this.positions[d].colour = "grey");
         subPaths.forEach(d=>d.forEach(e=>this.positions[e].colour = "orange"));
         breakPointIndices.forEach(d=>this.positions[d].colour = "yellow");
-        randPoints.forEach(d=>this.positions[d].colour = "purple");
-        
+        randPoints.forEach(d=>this.positions[d.index].colour = "purple");
     };
 
     //Take a random walk from the startpoint
@@ -362,6 +388,7 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         return subPath;        
     };
 
+    //Given a centre and radius, get an area of cells
     Hexagon.prototype.getRing = function(i,radius){
         let centre = this.indexToCube(i),
             subCentre = centre.subtract(radius),
@@ -371,11 +398,11 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
             yBounded = xBounded.filter(d=>subCentre.y < d.y && d.y < addCentre.y),
             zBounded = yBounded.filter(d=>subCentre.z < d.z && d.z < addCentre.z);
 
-        console.log(subCentre,addCentre,centre);
         return zBounded.map(d=>this.offsetToIndex(d.toOffset()));
     };
     
 
+    //Given a centre, and a direction, get all cells on that direction
     Hexagon.prototype.getLine = function(i,direction){
         let directions = {
             horizontal : ['left','right'],
@@ -402,7 +429,8 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         return foundCells.map(d=>this.offsetToIndex(d.toOffset()));
     };
 
-    //return bool
+    //Check an offset/cube is within bounds of the board,
+    //internally use offset
     Hexagon.prototype.inBounds = function(cube){
         let offset = cube;
         if(cube instanceof Cube){
@@ -412,23 +440,13 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         return inBounds;
     };
 
-
-    Hexagon.prototype.toCubes = function(){
-        let cubeArray = this.positions.map((d,i)=>this.indexToOffset(i));
-        return cubeArray;
-    };
-
     //----------------------------------------
-    //simple utilities
+    //duck type check for offset:
     function isOffset(pOffset){
         if(pOffset.q && pOffset.r){
             return true;
         }
         return false;
-    }
-
-    function isCube(pCube){
-        return pCube instanceof Cube;
     }
     
     return Hexagon;
