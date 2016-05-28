@@ -97,6 +97,25 @@ define(['lodash'],function(_){
             });
     });
 
+
+    //Meet and Greet
+    BModule.push(function(bTree){
+        bTree.Behaviour('meetAndGreet')
+            .type('sequential')
+        //entry
+            .entryCondition()
+            .entryAction()
+        //wait
+            .waitCondition()
+        //persist
+            .persistent(true)
+            .persistCondition()
+        //performace
+            .performAction()
+        //exit
+            .exitAction();
+    });
+    
     
 
     //utility function to generate a colour. from stack overflow

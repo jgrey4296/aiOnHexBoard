@@ -19,10 +19,11 @@ require.config({
 require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],function(d3,_,ExclusionFactBase,BTree,Hexagon,BModule,util){
     "use strict";
     console.log('Hexagon AI Behaviour Tree Test');
-    const height = 800,
+    const DEBUG = false,
+          height = 800,
           width = 800,
-          BOARDX_SIZE = 25,
-          BOARDY_SIZE = 25,
+          BOARDX_SIZE = 50,
+          BOARDY_SIZE = 50,
           movements = {
               "q" : "upLeft",
               "e" : "upRight",
@@ -36,18 +37,53 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
     let shift = false,
         selectType = 'ring',
         lineType = 'horizontal',
-        ringRadius = 1;
+        ringRadius = 1,
+        timer = null,
+    //create the canvas:
+        canvas = util.createCanvas("Hexagon AI Test",width,height),
+        //Then create the hexagon board:
+        hexBoard = new Hexagon(canvas,height,width,BOARDX_SIZE,BOARDY_SIZE),
+        //Create the base agent:
+        baseBTree = new BTree(undefined,BModule),
+        agents = [],
+        //the current turn:
+        turn = 0,
+        //nodes that have been clicked:
+        selectedNodes = [],
+        //the last found path:
+        priorPath = [];
 
+    
     //command object for lookup
     let commands = {
-        Shift : ()=>shift = true,
+        //register that shift is pressed
+        Shift : ()=>{
+            console.log('shift');
+            shift = true;},
+        //start/stop the simulation
+        s : ()=>{
+            if(timer === null){
+                timer = setInterval(()=>{
+                    agents.forEach(d=>d.update());
+                    hexBoard.draw();
+                    canvas.fillText(`Turn : ${turn++}`,400,-25);
+                },500);                    
+            }else{
+                clearInterval(timer);
+                timer = null;
+            };
+        },
+        //create a line/path/ring
         l : ()=>selectType = 'line',
+        p : ()=>selectType = 'path',
+        r : ()=>selectType = 'ring',
+        //create a particular type of line
         h : ()=>lineType = 'horizontal',
         t : ()=>lineType = 'vertLeft',
         u : ()=>lineType = 'vertRight',
-        p : ()=>selectType = 'path',
-        r : ()=>selectType = 'ring',
+        //set the size of a ring/area
         number : n=>ringRadius = n,
+        //do something when the user clicks
         click : function(event,container){
             if(shift){
                 addBlockade(event,container);
@@ -61,36 +97,7 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
         },
     };
 
-    
-    //Create a Canvas helper function:
-    function drawCanvas(name,before){
-        var group = d3.select('body').insert("p",before).attr("id",name),
-            title = group.append('h1').text(name),
-            canvas = group.append("canvas")
-            .attr("width",width)
-            .attr("height",height),
-            ctx = canvas.node().getContext("2d");
-        ctx.strokeRect(0,0,width,height);
-        return ctx;
-    }
-
-    //create the canvas:
-    let canvas = drawCanvas("Hexagon AI Test"),
-        //Then create the hexagon board:
-        hexBoard = new Hexagon(canvas,height,width,BOARDX_SIZE,BOARDY_SIZE),
-        //Create the base agent:
-        baseBTree = new BTree(undefined,BModule),
-        agents = [],
-        //the current turn:
-        turn = 0,
-        //nodes that have been clicked:
-        selectedNodes = [],
-        //the last found path:
-        priorPath = [];
-
-    canvas.font ="20px Georgia";
-    
-    //Creation of agents:
+     //Creation of agents:
     agents.push(baseBTree.newCharacter({
         name : "bob",
         colour : "grey",
@@ -125,38 +132,24 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
     }));;
 
     //set debug flags for bob:
-    //agents[0].setDebugFlags('binding');
-    //agents[0].setDebugFlags('actions','update','cleanup','preConflictSet','postConflictSet','failure','facts');
+    if(DEBUG){
+        agents[0].setDebugFlags('binding');
+        agents[0].setDebugFlags('actions','update','cleanup','preConflictSet','postConflictSet','failure','facts');
+    }
     
     //Register the agents into the board:
     hexBoard.register(agents);
     
     //Draw the board initially:
     hexBoard.draw();
-    
-    //For triggering updates on a timer:
-    // setInterval(function(){
-    //     agents.forEach(function(d){
-    //         d.update();
-    //     });
-    //     hexBoard.draw();
-    // },500);
 
-
-    
+    //Register key presses
     d3.select('body')
         .on('keydown',function(){
             if(commands[d3.event.key] !== undefined){
                 commands[d3.event.key]();
             }else if(!isNaN(Number(d3.event.key))){
                 commands.number(Number(d3.event.key));
-            }else{
-                //update agents
-                agents.forEach(function(d){
-                    d.update();
-                });
-                hexBoard.draw();
-                canvas.fillText(`Turn : ${turn++}`,400,-25);
             }
         })
         .on('keyup',function(){
@@ -165,8 +158,8 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
                 shift = false;
             }
         });
-    
-    //Click based selection/pathfinding:
+
+    //Register mouse clicks
     d3.select('canvas')
         .on('mousedown',function(){
             commands.click(d3.event,this);
@@ -174,7 +167,8 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
         });
 
 
-
+    //----------------------------------------
+    
     /**
        Pathfind. using the last two positions specified, run A* on them
      */    

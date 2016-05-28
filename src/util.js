@@ -73,6 +73,19 @@ define(['lodash','d3'],function(_,d3){
             y : canvasY
         };
     };
+
+    //create a canvas element, return the ctx
+    util.createCanvas = function(name,width,height,before){
+        let group = d3.select('body').insert("p",before).attr("id",name),
+            title = group.append('h1').text(name),
+            canvas = group.append("canvas")
+            .attr("width",width)
+            .attr("height",height),
+            ctx = canvas.node().getContext("2d");
+        ctx.strokeRect(0,0,width,height);
+        canvas.font ="20px Georgia";
+        return ctx;
+    };
     
     return util;
 });
