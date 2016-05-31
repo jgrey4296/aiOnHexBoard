@@ -115,7 +115,7 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         try{
             return this.offsetToIndex(this.cubeToOffset(rounded));
         }catch(error){
-            return undefined;
+            return [0,0];
         }
     };
 
