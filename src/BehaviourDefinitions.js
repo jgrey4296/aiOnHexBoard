@@ -36,7 +36,9 @@ define(['lodash'],function(_){
     BModule.push(function(bTree){
         bTree.Behaviour('move')
             .priority(1)
+        //entry: has a colour. bind to x
             .entryCondition(d=>`.${d.values.name}.colour![1]->x?`)
+        //perform: get a movement direction, move in that direction. also colour cell
             .performAction((ctx,n)=>{
                 let movement = _.sample(_.values(ctx.values.movements));
                 console.log(`Moving : ${movement}`);
@@ -50,6 +52,8 @@ define(['lodash'],function(_){
     BModule.push(function(bTree){
         bTree.Behaviour('moveToRandomTarget')
             .persistent(true)
+        //enter if no path chosen
+        //and colour set
             .entryCondition(a=>`!!.${a.values.name}.pathChosen?`,
                             a=>`.${a.values.name}.colour![1]->x?`)
             .subgoal('followPath');
@@ -96,23 +100,28 @@ define(['lodash'],function(_){
                 //console.log("colouring",currentPos,n.parent.bindings.x);
             });
     });
-
+    //--------------------
 
     //Meet and Greet
     BModule.push(function(bTree){
         bTree.Behaviour('meetAndGreet')
             .type('sequential')
-        //entry
+        //entry //none / choose preferred greeting
             .entryCondition()
             .entryAction()
-        //wait
-            .waitCondition()
-        //persist
+        //wait //until near someone not greeted last
+            .waitCondition((a,n)=>{
+                let index = a.values.board.offsetToIndex(a.values),
+                    neighbours = a.values.board.neighbours(index).map(d=>a.values.board.positions[d]),
+                    neighbourAgents = neighbours.filter(d=>_.keys(d.agents).length > 0);
+                return neighbourAgents.length == 0;
+            })
+        //persist //yes, no conditions
             .persistent(true)
             .persistCondition()
-        //performace
+        //performance // print 'hello'
             .performAction()
-        //exit
+        //exit // set last person greeted
             .exitAction();
     });
     
