@@ -22,8 +22,8 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
     const DEBUG = false,
           height = 800,
           width = 800,
-          BOARDX_SIZE = 50,
-          BOARDY_SIZE = 50,
+          BOARDX_SIZE = 25,
+          BOARDY_SIZE = 25,
           movements = {
               "q" : "upLeft",
               "e" : "upRight",
@@ -64,6 +64,7 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
         s : ()=>{
             if(timer === null){
                 timer = setInterval(()=>{
+                    //todo:pass in neighbours?
                     agents.forEach(d=>d.update());
                     hexBoard.draw();
                     canvas.fillText(`Turn : ${turn++}`,400,-25);
