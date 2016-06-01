@@ -33,7 +33,7 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         this.hexHeight = (2 * this.radius);
         //INDIVIDUAL CELLS:
         this.positions = Array(this.columns*this.rows).fill(0).map(function(d,i){
-            return {index : i, colour : "black", agents : {}};
+            return {index : i, colour : "black", agents : {}, blocked : false};
         });
         //Current position:
         this.curIndex = this.offsetToIndex({q:0,r:0});
@@ -175,7 +175,7 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         let positionsLength = this.positions.length,
             rows = this.rows,
             columns = this.columns,
-            cube = this.offsetToCube(this.indexToOffset(index)),
+            cube = !isOffset(index) ? this.indexToCube(index) : this.offsetToCube(index),
             neighbours = cube.neighbours(),
             //get offset locations
             n_offset = neighbours.map(d=>d.toOffset()),
@@ -189,6 +189,10 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         return n_indices_filtered;
     };
 
+    Hexagon.prototype.neighbourCells = function(index){
+        return this.neighbours(index).map(d=>this.positions[d]);
+    };
+    
     /**
        Move an agent, by id, to the specified cell/tile
        Removes the agent from it's prior tile
@@ -443,7 +447,7 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
     //----------------------------------------
     //duck type check for offset:
     function isOffset(pOffset){
-        if(pOffset.q && pOffset.r){
+        if(pOffset.q !== undefined && pOffset.r !== undefined){
             return true;
         }
         return false;
