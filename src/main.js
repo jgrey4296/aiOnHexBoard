@@ -35,7 +35,7 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
 
     //variables to control the display:
     let shift = false,
-        selectType = 'ring',
+        selectType = 'path',
         lineType = 'horizontal',
         ringRadius = 1,
         timer = null,
@@ -86,14 +86,15 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
         number : n=>ringRadius = n,
         //do something when the user clicks
         click : function(event,container){
-            if(shift){
-                addBlockade(event,container);
-            }else if(selectType === 'line'){
-                drawLine(event,container);
+            let pos = util.screenToElementPosition(event,container),
+                index = hexBoard.screenToIndex(pos.x,pos.y);
+            console.log(hexBoard.positions[index]);
+            if(selectType === 'line'){
+                drawLine(index);
             }else if(selectType === 'ring'){
-                drawRing(event,container);
+                drawRing(index);
             }else if(selectType === 'path'){
-                pathFind(event,container);
+                pathFind(index);
             }
         },
     };
@@ -173,12 +174,12 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
     /**
        Pathfind. using the last two positions specified, run A* on them
      */    
-    let pathFind = function(event,element){
+    let pathFind = function(index){
             //convert the mouse click to a position in the canvas
-        let pos = util.screenToElementPosition(event,element),
+        //let pos = util.screenToElementPosition(event,element),
             //convert that to a board position
-            index = hexBoard.screenToIndex(pos.x,pos.y),
-            colour = shift ? "blue" : "green";
+          //  index = hexBoard.screenToIndex(pos.x,pos.y),
+        let colour = shift ? "blue" : "green";
         if(index === undefined){ return; }
         //store the position
         selectedNodes.unshift(index);
@@ -191,40 +192,36 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
         }
         //if two positions have been selected, pathfind between
         if(selectedNodes.length === 2){
-            //remove the old path
-            priorPath.forEach(d=>hexBoard.positions[d].colour = "black");
-            //set the new path
             let path = hexBoard.pathFind(selectedNodes[0],selectedNodes[1]);
-            priorPath = path;
-            path.forEach(d=>hexBoard.positions[d].colour = colour);
+            if(shift){
+                path.forEach(d=>hexBoard.block(d,true));
+            }else{
+                //remove the old path
+                priorPath.forEach(d=>hexBoard.positions[d].colour = "black");
+                //set the new path
+                path.forEach(d=>hexBoard.positions[d].colour = colour);
+                priorPath = path;
+            }
         }
     };
 
-    //Convert a cell to be blocked for pathfinding
-    let addBlockade = function(event,element){
-        let mousePosition = d3.mouse(element),
-            index = hexBoard.screenToIndex(mousePosition[0],mousePosition[1]);
-        if(index === undefined) { return; }
-        hexBoard.block(index);
-    };
-
     //Find a draw a line of cells 
-    let drawLine = function(event,element){
-        let pos = util.screenToElementPosition(event,element),
-            index = hexBoard.screenToIndex(pos.x,pos.y),
-            theLine = hexBoard.getLine(index,lineType);
+    let drawLine = function(index){
+        //let pos = util.screenToElementPosition(event,element),
+        //    index = hexBoard.screenToIndex(pos.x,pos.y),
+        let theLine = hexBoard.getLine(index,lineType);
         hexBoard.positions[index].colour = 'purple';
         console.log('found line',theLine,index);
         theLine.forEach(d=>hexBoard.block(d,true));
     };
 
     //Get an area of the board
-    let drawRing = function(event,element){
-        let pos = util.screenToElementPosition(event,element),
-            index = hexBoard.screenToIndex(pos.x,pos.y),
-            theRing = hexBoard.getRing(index,ringRadius);
+    let drawRing = function(index){
+        //let pos = util.screenToElementPosition(event,element),
+        //    index = hexBoard.screenToIndex(pos.x,pos.y),
+        let theRing = hexBoard.getRing(index,ringRadius);
         hexBoard.positions[index].colour = "grey";
-        theRing.forEach(d=>hexBoard.block(d,true));
+        theRing.forEach(d=>hexBoard.block(d,shift));
     };
     
     //-----
