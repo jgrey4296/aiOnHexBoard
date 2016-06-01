@@ -22,6 +22,11 @@ define([],function(){
             this.y = y;
             this.z = z;
         }
+
+        if(isNaN(this.x) || isNaN(this.y) || isNaN(this.z)){
+            console.log('theNaN',this,x,y,z);
+            throw new Error('constructed a nan');
+        }        
     };
 
     //Scale a cube coordiate
