@@ -2,8 +2,9 @@
 /**
    Hexagon and pathfinding implemented from http://www.redblobgames.com/
  */
-define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,PriorityQueue,Cube){
+define(['lodash','d3','util','PriorityQueue','Cube','Djikstras'],function(_,d3,util,PriorityQueue,Cube,Djikstras){
     "use strict";
+    
     /**
        A Hexagon board representation. uses an ODD R OFFSET REPRESENTATION
        @param ctx The canvas context to draw to
@@ -40,9 +41,6 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         //Record all registered agents used in this hexboard
         this.agents = {};
         //--------------------
-        //Test Setups:
-        //Generate a map:
-        this.genMap();
     };
 
     //place an array of agents into a board position
@@ -85,7 +83,7 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
        @param index
        @param force - will force to blocked, short circuiting the flip flop
     */
-    Hexagon.prototype.block = function(index, force){
+    Hexagon.prototype.block = function(index,force){
         if(this.positions[index] === undefined){
             console.log(index);
             throw new Error('invalid position specified to block');
@@ -356,7 +354,88 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
         return path;
     };
 
+    //Utility to call latest genMap function:
+    Hexagon.prototype.generateMap = function(){
+        return this.genMap2();
+    };
 
+    //generate a map and connect it using djikstras
+    Hexagon.prototype.genMap3 = function(){
+        let hexRef = this,
+            //temp block a random selection of cells
+            toBlock = _.sampleSize(this.positions,Math.floor(this.positions.length * 0.2)),
+            nodes = _.sampleSize(this.positions,Math.floor(this.positions.length * 0.05)),
+            nodeIndices = nodes.map(d=>d.index),
+            //turn the nodes into an initial graph
+           //{ nodeIndex : { node : {}, distances : [ [nodeIndex, distance] ]
+            nodeGraph = nodes.reduce((m,v)=>{
+                if(m[v.index] === undefined){
+                    m[v.index] = {
+                        node : v,
+                        distances : {}
+                    };
+                }
+                return m;
+            },{});
+        //add the distances in:
+        nodeIndices.forEach(i=>{
+            let currentNode = nodeGraph[i];
+            nodeIndices.forEach(d=>{
+                if(d === i) { return; } //skip yourself
+                currentNode.distances[d] = hexRef.distance(i,d);
+            });
+        });
+
+        
+        //run djikstras to get the tree:
+        let source = _.sample(nodeIndices),
+            shortestTree = Djikstras(nodeGraph,source);
+
+        console.log('shortest tree',shortestTree);
+
+        toBlock.forEach(d=>hexRef.block(d.index,true));
+        
+        return {
+            edges: shortestTree,
+            current: source
+        };
+    };
+
+    
+    /**
+       Generate a map - dungeon of the endless-like
+     */
+    Hexagon.prototype.genMap2 = function(){
+        //temp block a random selection of cells
+        let toBlock = _.sampleSize(this.positions,Math.floor(this.positions.length * 0.05)),
+            //sort high to low:
+            sorted = toBlock.sort((a,b)=>this.indexToCube(a.index).z - this.indexToCube(b.index).z),
+            grouped = sorted.reduce((m,v)=>{
+                if(m[this.indexToCube(v.index).z] === undefined){
+                    m[this.indexToCube(v.index).z] = [];
+                }
+                m[this.indexToCube(v.index).z].push(v);
+                return m;
+            },{}),
+            rings = sorted.map(d=>this.getRing(d.index,2));
+        //return _.values(grouped);
+        return rings;
+        
+        //rings.forEach(d=>d.forEach(e=>this.block(e,true)));
+        
+        //pick a point in one quadrant of the map
+                
+        //pick a point that is MIN_DISTANCE away from it
+
+        //pathfind between the two points
+
+        //divide the path into random sections, recursively branch
+
+        //expand out to create multi-hex rooms for maneuvering
+        
+    };
+    
+    
     /**
        Generate a map from a random path, with some random walks off that path
      */
@@ -372,7 +451,9 @@ define(['lodash','d3','util','PriorityQueue','Cube'],function(_,d3,util,Priority
                 return m.concat(v);
             },pathIndices),
             indicesSet = new Set(combinedIndices);
-        //---------- DEBUG: 
+
+        
+        //---------- DEBUG:
         //colour the steps
         pathIndices.forEach(d=>this.positions[d].colour = "grey");
         subPaths.forEach(d=>d.forEach(e=>this.positions[e].colour = "orange"));
