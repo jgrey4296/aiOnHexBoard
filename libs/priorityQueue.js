@@ -12,8 +12,10 @@ define(['lodash'],function(_){
      */
     var PriorityQueue = function(maximising){
         if(maximising){
+            this.type = 'maximising';
             this.comp = (a,b,i,j)=>a.p>b.p ? i : j;
         }else{
+            this.type = 'minimising';
             this.comp = (a,b,i,j)=>a.p<b.p ? i : j;
         }
         //to extract from objects a priority:
@@ -47,55 +49,16 @@ define(['lodash'],function(_){
                 throw new Error("cannot detect priority");
             }
         }
+        
         //add to the end:
         this.heap.push({
             data : data,
             p : priority
         });
-        this.bubbleUp(this.heap.length-1);        
+        this.modify(this.heap.length-1,priority);
+        //this.bubbleUp(this.heap.length-1);        
     };
 
-    /**
-       Heapify : takes an array and repeatedly inserts it into the heap
-       @param {Array} inputArray
-     */
-    PriorityQueue.prototype.heapify = function(inputArray){
-        if(!(inputArray instanceof Array)){
-            throw new Error('heapify takes an array');
-        }
-        inputArray.forEach(d=>this.insert(d));
-    };
-    
-    /**
-       bubble an element up the heap as far as necessary,
-       returns the PQ to a heap state
-       @param index : The element to start the process on
-     */
-    PriorityQueue.prototype.bubbleUp = function(index){
-        let currentIndex = index,
-            current = this.heap[currentIndex],
-            parentIndex = Math.floor(currentIndex*0.5),
-            parent = this.heap[parentIndex];
-        if(current == undefined || parent === undefined){
-            throw new Error('undefined elements for bubble');
-        }
-        if(this.empty()) {
-            throw new Error('queue is empty');
-        }
-        if(parent === 0) return;
-        while(currentIndex !== 0 && parentIndex !== 0 && this.comp(current,parent,currentIndex,parentIndex) === currentIndex){
-            //swap as current is greater than parent
-            this.heap[parentIndex] = current;
-            this.heap[currentIndex] = parent;
-            //update the indices and elements:
-            currentIndex = parentIndex;
-            current = parent;
-            parentIndex = Math.floor(currentIndex*0.5);
-            parent = this.heap[parentIndex];
-        }        
-    };
-
-    
     /*
       next : removes the top priority and elem from the heap
       @returns data 
@@ -111,54 +74,64 @@ define(['lodash'],function(_){
         }        
         //take the last element as the new head:
         this.heap[1] = newTop;
-        this.bubbleDown();
+        this.heapify();
         return returnVal.data;
     };
 
-    /**
-       bubbleDown : Having removed an element from the heap,
-       bubble down reasserts the heap state
-     */
-    PriorityQueue.prototype.bubbleDown = function(){
-        let cIndex = 1,
-            //utility functions for child indicies
-            lciF = ()=>cIndex*2,
-            rciF = ()=>cIndex*2+1;
+    //modify a priority
+    PriorityQueue.prototype.modify = function(index,newPriority){
+        if(this.type === 'maximising' && newPriority < this.heap[index].p){
+            throw new Error('new key is smaller than existing');
+        }else if(this.type === 'minimising' && newPriority > this.heap[index].p){
+            throw new Error('new key is larger than existing');
+        }
+        let parent = this.parent(index);
+        this.heap[index].p = newPriority;
 
-        //go until you reach the of the heap
-        //(or internally you reach satisfaction)
-        while(cIndex < this.heap.length-1){
-            //Get the children
-            let lChildI = lciF(),
-                rChildI = rciF(),
-                lChild = this.heap[lChildI],
-                rChild = this.heap[rChildI],
-                bestChildIndex;
-            //make sure the children exist
-            if(lChild === undefined && rChild === undefined){
-                //neither exist, bubbledown is done
-                break;
-            }else if(lChild === undefined && rChild !== undefined){
-                bestChildIndex = rChildI;
-            }else if(lChild !== undefined && rChild === undefined){
-                bestChildIndex = lChildI;
-            }else{
-                bestChildIndex = this.comp(lChild,rChild,lChildI,rChildI);
-            }
-            
-            //compare the current to the best:
-            if(this.comp(this.heap[cIndex],this.heap[bestChildIndex],cIndex,bestChildIndex) === bestChildIndex){
-                //swap and repeat:
-                let curr = this.heap[cIndex];
-                this.heap[cIndex] = this.heap[bestChildIndex];
-                this.heap[bestChildIndex] = curr;
-                cIndex = bestChildIndex;
-            }else{
-                break;
-            }
-        }        
+        while(index > 1 && this.comp(this.heap[index],this.heap[parent],index,parent) === index){
+            let swap = this.heap[index];
+            this.heap[index] = this.heap[parent];
+            this.heap[parent] = swap;
+            index = parent;
+            parent = this.parent(index);
+        }
     };
-        
 
+    //heapify
+    PriorityQueue.prototype.heapify = function(){
+        let i = 1,
+            l= this.left(i),
+            r = this.right(i),
+            preferred;
+        while(true){
+            if(l <= this.heap.length-1 && this.comp(this.heap[l],this.heap[i],l,i) === l){
+                preferred = l;
+            }else{
+                preferred = i;
+            }
+            if(r <= this.heap.length-1 && this.comp(this.heap[r],this.heap[preferred],r,preferred) === r){
+                preferred = r;
+            }
+            if(preferred !== i){
+                let swap = this.heap[i];
+                this.heap[i] = this.heap[preferred];
+                this.heap[preferred] = swap;
+                i = preferred;
+                l = this.left(i);
+                r = this.right(i);
+            }else{
+                return;
+            }
+        }
+    };
+
+    //utilities
+    PriorityQueue.prototype.left = (i)=>Math.floor(i * 2);
+    PriorityQueue.prototype.right = (i)=>Math.floor((i * 2) + 1);
+    PriorityQueue.prototype.parent = function(index){
+        return Math.floor(index * 0.5);
+    };
+
+    
     return PriorityQueue;
 });
