@@ -322,9 +322,10 @@ define(['lodash','EL','PriorityQueue'],function(_,ExFB,PriorityQueue){
             this.children[childId].cleanup(status === FAIL ? false : true );
         }
         //console.log("Informed",this.id,this);
-        if(this.currentAbstract === undefined){ return; }
-        //Deal with SEQUENTIAL NODES
-        if(this.currentAbstract.type === SEQUENTIAL){            
+        if(this.currentAbstract === undefined && this.parent !== undefined){
+            this.informParent(status);
+        }else if(this.currentAbstract.type === SEQUENTIAL){
+            //Deal with SEQUENTIAL NODES
             if(status === SUCCESS){
                 ////increment step counter
                 this.sequenceCounter++;
@@ -332,11 +333,11 @@ define(['lodash','EL','PriorityQueue'],function(_,ExFB,PriorityQueue){
             }else {
                 this.informParent(status);
             }
-            //DEAL WITH CHOICE NODES
         }else if(this.currentAbstract.type === CHOICE){
+            //DEAL WITH CHOICE NODES
             this.informParent(status);
-            //DEAL WITH PARALLEL NODES
         }else if(this.currentAbstract.type === PARALLEL){
+            //DEAL WITH PARALLEL NODES
             if(status === SUCCESS){
                 this.parallelSuccessCounter++;
             }else if(status === FAIL){
@@ -366,11 +367,14 @@ define(['lodash','EL','PriorityQueue'],function(_,ExFB,PriorityQueue){
             this.bTreeRef.debug('update','resetting persistent');
             let persist = false;
             //see if the node should persist:
-            if(this.currentAbstract.persistent === SUCCESSPERSIST && status !== SUCCESS && this.bTreeRef.testConditions(this.currentAbstract.condition.persist,this)){
+            if(this.currentAbstract.persistent === SUCCESSPERSIST && status !== SUCCESS && this.bTreeRef.testConditions(this.currentAbstract.conditions.persist,this)){
+                //persist until success
                 persist = true;
-            }else if(this.currentAbstract.persistent === FAILPERSIST && status !== FAIL && this.bTreeRef.testConditions(this.currentAbstract.condition.persist,this)){
+            }else if(this.currentAbstract.persistent === FAILPERSIST && status !== FAIL && this.bTreeRef.testConditions(this.currentAbstract.conditions.persist,this)){
+                //persist until failure
                 persist = true;
             }else if(this.currentAbstract.persistent === PERSIST && this.bTreeRef.testConditions(this.currentAbstract.conditions.persist,this)){
+                //persist if conditions say so
                 persist = true;
             }
             //----
@@ -601,6 +605,8 @@ define(['lodash','EL','PriorityQueue'],function(_,ExFB,PriorityQueue){
         //cleanup all children:
         _.values(this.children).forEach(d=>d.cleanup(performPostActions));
         this.children = {};
+        //REMOVE FROM THE ALLNODES FIELD OF THE BTREE:
+        delete this.bTreeRef.allRealNodes[this.id];
     };
 
     /**
@@ -928,7 +934,7 @@ define(['lodash','EL','PriorityQueue'],function(_,ExFB,PriorityQueue){
         //run context conditions, deal with failures
         this.contextConditions.forEach((conds,node)=>{
             if(!this.testConditions(conds,node)){
-                node.informParent(node.currentAbstract.contextType);
+                node.informParent(node.currentAbstract.contextType,true);
             }
         });
         
