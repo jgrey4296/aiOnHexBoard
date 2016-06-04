@@ -148,7 +148,11 @@ define(['lodash'],function(_){
         //subgoal to say hello:
             .subgoal('sayHello')
         //exit // set last person greeted
-            .exitAction();
+            .exitAction((a,n)=>{
+                console.log('cleaning up greet');
+                delete a.values.greetAgent;
+                delete a.values.neighbourAgents;
+            });
     });
 
 
@@ -165,9 +169,7 @@ define(['lodash'],function(_){
                 console.log(`${a.values.name} says "hello ${a.values.greetAgent.name}"`);                
             })
         //cleanup:
-            .exitAction((a,n)=>{
-                delete a.values.greetAgent;
-            });
+            .exitAction();
         
     });
     
