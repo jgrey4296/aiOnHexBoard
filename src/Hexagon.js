@@ -16,6 +16,7 @@ define(['lodash','d3','util','PriorityQueue','Cube','Djikstras'],function(_,d3,u
     let Hexagon = function(ctx,height,width,columns,rows){
         //Offset the drawn board
         this.ctx = ctx;
+        //Offset from the top left of the canvas:
         this.translationAmount = {
             x : 50,
             y : 50
