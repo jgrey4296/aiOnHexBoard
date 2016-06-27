@@ -70,7 +70,7 @@ require(['d3','lodash','EL','BTree','Hexagon','BehaviourDefinitions','util'],fun
                 timer = setInterval(()=>{
                     //todo:pass in neighbours?
                     agents.forEach(d=>d.update());
-                    agents.forEach(d=>console.log(`${d.values.name} : ${_.keys(d.allRealNodes).length}`));
+                    //agents.forEach(d=>console.log(`${d.values.name} : ${_.keys(d.allRealNodes).length}`));
                     hexBoard.draw();
                     canvas.fillText(`Turn : ${turn++}`,400,-25);
                 },500);                    
